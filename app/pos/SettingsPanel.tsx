@@ -419,7 +419,7 @@ export default function SettingsPanel({
               label="Shop Owner Name"
               icon={<User className="w-3.5 h-3.5" />}
               value={form.owner_name}
-              placeholder="Ananthi M"
+              placeholder="e.g. Ananthi M"
               onChange={(v) => setField("owner_name", v)}
             />
             <TextField
@@ -427,7 +427,7 @@ export default function SettingsPanel({
               label="Shop Name"
               icon={<Store className="w-3.5 h-3.5" />}
               value={form.shop_name}
-              placeholder="Dhanyas Boutique"
+              placeholder="e.g. Dhanyas Boutique"
               onChange={(v) => setField("shop_name", v)}
             />
             <TextField
@@ -443,7 +443,7 @@ export default function SettingsPanel({
               label="Contact Number"
               icon={<Phone className="w-3.5 h-3.5" />}
               value={form.phone}
-              placeholder="8098089591"
+              placeholder="e.g. 8098089591"
               inputMode="tel"
               onChange={(v) => setField("phone", v)}
             />
@@ -460,7 +460,7 @@ export default function SettingsPanel({
               label="Shop Address"
               icon={<MapPin className="w-3.5 h-3.5" />}
               value={form.address}
-              placeholder="Kasthoribhai road, AGM Apartment, Kumbakonam - 612001"
+              placeholder="e.g. Kasthoribhai road, Kumbakonam - 612001"
               onChange={(v) => setField("address", v)}
               className="sm:col-span-2"
             />
@@ -468,7 +468,7 @@ export default function SettingsPanel({
               id="set-location"
               label="City / Location"
               value={form.location}
-              placeholder="Kumbakonam, Tamil Nadu"
+              placeholder="e.g. Kumbakonam, Tamil Nadu"
               onChange={(v) => setField("location", v)}
             />
             <TextField

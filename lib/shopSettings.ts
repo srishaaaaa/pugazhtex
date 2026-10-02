@@ -40,18 +40,26 @@ async function ensureSchema(): Promise<void> {
   }
 }
 
+/**
+ * Text column -> string. Only null/undefined falls back to the bundled default;
+ * an intentionally blank field must stay blank, otherwise clearing a field in
+ * Settings would silently restore the seeded value on the next page load.
+ */
+const text = (value: unknown, fallback: string): string =>
+  value === null || value === undefined ? fallback : String(value);
+
 const toSettings = (row: Record<string, unknown>): ShopSettings => ({
-  owner_name: (row.owner_name as string) || DEFAULT_SHOP_SETTINGS.owner_name,
-  shop_name: (row.shop_name as string) || DEFAULT_SHOP_SETTINGS.shop_name,
-  tagline: (row.tagline as string) || DEFAULT_SHOP_SETTINGS.tagline,
-  phone: (row.phone as string) || DEFAULT_SHOP_SETTINGS.phone,
-  email: (row.email as string) || DEFAULT_SHOP_SETTINGS.email,
-  address: (row.address as string) || DEFAULT_SHOP_SETTINGS.address,
-  location: (row.location as string) || DEFAULT_SHOP_SETTINGS.location,
-  instagram_url: (row.instagram_url as string) || DEFAULT_SHOP_SETTINGS.instagram_url,
-  business_hours: (row.business_hours as string) || DEFAULT_SHOP_SETTINGS.business_hours,
-  services: (row.services as string) || DEFAULT_SHOP_SETTINGS.services,
-  gstin: (row.gstin as string) || DEFAULT_SHOP_SETTINGS.gstin,
+  owner_name: text(row.owner_name, DEFAULT_SHOP_SETTINGS.owner_name),
+  shop_name: text(row.shop_name, DEFAULT_SHOP_SETTINGS.shop_name),
+  tagline: text(row.tagline, DEFAULT_SHOP_SETTINGS.tagline),
+  phone: text(row.phone, DEFAULT_SHOP_SETTINGS.phone),
+  email: text(row.email, DEFAULT_SHOP_SETTINGS.email),
+  address: text(row.address, DEFAULT_SHOP_SETTINGS.address),
+  location: text(row.location, DEFAULT_SHOP_SETTINGS.location),
+  instagram_url: text(row.instagram_url, DEFAULT_SHOP_SETTINGS.instagram_url),
+  business_hours: text(row.business_hours, DEFAULT_SHOP_SETTINGS.business_hours),
+  services: text(row.services, DEFAULT_SHOP_SETTINGS.services),
+  gstin: text(row.gstin, DEFAULT_SHOP_SETTINGS.gstin),
   accent_color: normalizeHex((row.accent_color as string) || '') || DEFAULT_SHOP_SETTINGS.accent_color,
   logo_data_url: (row.logo_data_url as string) || null,
   updated_at: row.updated_at ? String(row.updated_at) : undefined,
