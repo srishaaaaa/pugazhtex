@@ -484,7 +484,7 @@ export default function SettingsPanel({
               label="Instagram Link"
               icon={<Camera className="w-3.5 h-3.5" />}
               value={form.instagram_url}
-              placeholder="https://www.instagram.com/yourhandle"
+              placeholder="@yourhandle or the full profile link"
               onChange={(v) => setField("instagram_url", v)}
               className="sm:col-span-2"
             />

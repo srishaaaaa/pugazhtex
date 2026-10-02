@@ -3,7 +3,7 @@ import type { ShopSettings } from './types';
 import { DEFAULT_SHOP_SETTINGS, DEFAULT_ACCENT, normalizeHex } from './shopProfile';
 
 // Re-exported so server modules can pull everything shop-related from one file.
-export { DEFAULT_SHOP_SETTINGS, shopLogoSrc, formatPhone, instagramHandle, DEFAULT_ACCENT, ACCENT_PRESETS, accentCssVars, isLightColor, normalizeHex } from './shopProfile';
+export { DEFAULT_SHOP_SETTINGS, shopLogoSrc, formatPhone, instagramHandle, normalizeInstagramUrl, DEFAULT_ACCENT, ACCENT_PRESETS, accentCssVars, isLightColor, normalizeHex } from './shopProfile';
 
 /** Single-row key so the profile is a singleton. */
 const SETTINGS_ID = 'default';

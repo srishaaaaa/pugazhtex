@@ -108,6 +108,31 @@ export const DEFAULT_SHOP_SETTINGS: ShopSettings = {
 };
 
 /**
+ * Strip QR/share tracking wrappers (e.g. `?stkn=...&utm_source=qr`) from an
+ * Instagram link so the stored URL stays clean and permanent. Anything that
+ * isn't recognisably an Instagram profile URL is returned untouched, so a
+ * plain handle such as `@srisakthipugazhtex` still gets expanded to a link.
+ */
+export const normalizeInstagramUrl = (input: string): string => {
+  const raw = (input || '').trim();
+  if (!raw) return '';
+  // Bare handle or handle with no scheme -> assume the instagram.com profile URL.
+  const withScheme = /^@?[A-Za-z0-9._]+\/?$/.test(raw) && !raw.includes('/')
+    ? `https://www.instagram.com/${raw.replace(/^@/, '').replace(/\/$/, '')}`
+    : raw;
+  try {
+    const url = new URL(withScheme);
+    if (!/(^|\.)instagram\.com$/i.test(url.hostname)) return raw;
+    const handle = url.pathname.split('/').filter(Boolean)[0];
+    // Only profile-root links have a usable handle; leave anything else alone.
+    if (!handle) return raw;
+    return `https://www.instagram.com/${handle}`;
+  } catch {
+    return raw;
+  }
+};
+
+/**
  * Instagram link -> display handle.
  * Drops the protocol, `www.`, the profile path AND any query string so a shared
  * link like `.../srisakthipugazhtex?stkn=...` renders as `@srisakthipugazhtex`.
