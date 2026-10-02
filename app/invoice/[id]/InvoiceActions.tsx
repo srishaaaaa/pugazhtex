@@ -53,7 +53,7 @@ export function InvoiceActions({
       const currentUrl = window.location.href;
       const cleanPhone = (customerPhone || "").replace(/\D/g, "").slice(-10);
       const invoiceType = isGst ? "Tax Invoice" : "Invoice";
-      const text = `*${shopName || "SS CREATIVES"}*\n${invoiceType} #${orderId}\nCustomer: ${customerName || "Counter Sale"}\nTotal: ₹${grandTotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}\n\nInvoice Link:\n${currentUrl}`;
+      const text = `*${shopName || "Sri Sakthi Pugazh Tex"}*\n${invoiceType} #${orderId}\nCustomer: ${customerName || "Counter Sale"}\nTotal: ₹${grandTotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}\n\nInvoice Link:\n${currentUrl}`;
       const encoded = encodeURIComponent(text);
 
       const url = cleanPhone

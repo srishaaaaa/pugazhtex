@@ -427,7 +427,7 @@ export default function SettingsPanel({
               label="Shop Name"
               icon={<Store className="w-3.5 h-3.5" />}
               value={form.shop_name}
-              placeholder="e.g. Dhanyas Boutique"
+              placeholder="e.g. Sri Sakthi Pugazh Tex"
               onChange={(v) => setField("shop_name", v)}
             />
             <TextField

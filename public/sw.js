@@ -1,11 +1,11 @@
-// Bumped to v3 when the shop profile, theme accent and bundled logo moved to
-// Sri Sakthi Pugazh Tex, so installed PWA clients drop their stale cached copy.
-const CACHE_NAME = 'sakthi-pugazh-tex-pos-v3';
+// Bumped to v4 when the legacy brand logos and naming were purged and every
+// surface switched to the single Sri Sakthi Pugazh Tex brand asset, so
+// installed PWA clients drop their stale cached copies.
+const CACHE_NAME = 'sakthi-pugazh-tex-pos-v4';
 const ASSETS_TO_CACHE = [
   '/store',
   '/manifest.json',
   '/logo.png',
-  '/icon.png',
   '/pos'
 ];
 

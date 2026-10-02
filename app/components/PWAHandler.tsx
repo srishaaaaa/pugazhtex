@@ -104,7 +104,7 @@ export default function PWAHandler({
       </div>
       <div className="flex-1 min-w-0">
         <h4 className="text-[11px] sm:text-xs font-black tracking-tight text-white uppercase truncate">
-          Install {shopName || "SS CREATIVES"}
+          Install {shopName || "Sri Sakthi Pugazh Tex"}
         </h4>
         <p className="text-[9px] sm:text-[10px] text-gray-300 font-semibold truncate">
           Add app for fast offline access

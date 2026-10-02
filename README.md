@@ -1,6 +1,6 @@
-# DHANYAS BOUTIQUE — POS & Inventory Billing System
+# SRI SAKTHI PUGAZH TEX — POS & Inventory Billing System
 
-A PWA-enabled Point of Sale (POS), billing, and inventory management system for **Dhanyas Boutique**, Kumbakonam. It handles quick invoice generation, WhatsApp delivery of digital receipts, order history, GST / non-GST billing with two revenue dashboards, stock management with low-stock alerts, and an editable shop profile.
+A PWA-enabled Point of Sale (POS), billing, and inventory management system for **Sri Sakthi Pugazh Tex**, Kumbakonam. It handles quick invoice generation, WhatsApp delivery of digital receipts, order history, GST / non-GST billing with two revenue dashboards, stock management with low-stock alerts, and an editable shop profile.
 
 ## Features
 
@@ -163,6 +163,6 @@ The role is determined by which passcode is used to log in.
 
 ## License
 
-© 2026 Dhanyas Boutique. All Rights Reserved.
+© 2026 Sri Sakthi Pugazh Tex. All Rights Reserved.
 
 Powered by [Cenexa Systems](https://www.cenexasystems.com/).

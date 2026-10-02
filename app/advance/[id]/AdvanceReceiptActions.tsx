@@ -43,7 +43,7 @@ export function AdvanceReceiptActions({
     const fmt = (n: number) =>
       n.toLocaleString("en-IN", { minimumFractionDigits: 2 });
     const text =
-      `*${shopName || "SS CREATIVES"}*\nAdvance Order Receipt #${advanceId}\n` +
+      `*${shopName || "Sri Sakthi Pugazh Tex"}*\nAdvance Order Receipt #${advanceId}\n` +
       `Customer: ${customerName || "Counter Customer"}\n\n` +
       `Order Total: ₹${fmt(total)}\n` +
       `Deposit Paid: ₹${fmt(deposit)}\n` +

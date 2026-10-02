@@ -1,5 +1,5 @@
 -- =====================================================================
---  DHANYAS BOUTIQUE — POS & INVENTORY SCHEMA
+--  SRI SAKTHI PUGAZH TEX — POS & INVENTORY SCHEMA
 --  Target: PostgreSQL 15+ (Neon serverless)
 --
 --  HOW TO USE
@@ -225,7 +225,7 @@ ON CONFLICT (id) DO NOTHING;
 -- CREATE INDEX IF NOT EXISTS idx_products_type     ON products (item_type);
 -- CREATE INDEX IF NOT EXISTS idx_order_items_product ON order_items (product_id);
 
--- SANITY CHECK: expect 9 tables, and 'Dhanyas Boutique' in shop_settings
+-- SANITY CHECK: expect 9 tables, and 'Sri Sakthi Pugazh Tex' in shop_settings
 -- SELECT table_name FROM information_schema.tables
 --   WHERE table_schema = 'public' ORDER BY table_name;
 -- SELECT shop_name, phone, email FROM shop_settings WHERE id = 'default';
