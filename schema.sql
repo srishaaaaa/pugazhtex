@@ -180,12 +180,12 @@ INSERT INTO shop_settings (
   address, location, instagram_url, business_hours, services, gstin, logo_data_url, accent_color
 ) VALUES (
   'default',
-  'Sri Sakthi Pugazh Tex',
+  'Shanmugapriya',
   'Sri Sakthi Pugazh Tex',
   'All Kinds of Saree Manufacturer • Wholesale & Retail',
   '7358670411',
-  '',
-  'No. 185, Le Sitharas Square, Mudichur Road, Next to HP Petrol Pump, Mudichur, Chennai - 600048',
+  'Srisakthipugazhtex@gmail.com',
+  'No. 185, LE Sitharas Square, Mudichur Road, Next to HP Petrol Pump, Mudichur, Chennai - 600048',
   'Mudichur, Chennai, Tamil Nadu',
   'https://www.instagram.com/srisakthipugazhtex',
   '',

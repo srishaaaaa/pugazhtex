@@ -91,12 +91,12 @@ export function accentCssVars(accent: string): Record<string, string> {
  * used from client components.
  */
 export const DEFAULT_SHOP_SETTINGS: ShopSettings = {
-  owner_name: 'Sri Sakthi Pugazh Tex',
+  owner_name: 'Shanmugapriya',
   shop_name: 'Sri Sakthi Pugazh Tex',
   tagline: 'All Kinds of Saree Manufacturer • Wholesale & Retail',
   phone: '7358670411',
-  email: '',
-  address: 'No. 185, Le Sitharas Square, Mudichur Road, Next to HP Petrol Pump, Mudichur, Chennai - 600048',
+  email: 'Srisakthipugazhtex@gmail.com',
+  address: 'No. 185, LE Sitharas Square, Mudichur Road, Next to HP Petrol Pump, Mudichur, Chennai - 600048',
   location: 'Mudichur, Chennai, Tamil Nadu',
   instagram_url: 'https://www.instagram.com/srisakthipugazhtex',
   business_hours: '',
