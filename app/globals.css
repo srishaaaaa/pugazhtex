@@ -1,0 +1,104 @@
+@import "tailwindcss";
+
+/*
+ * Accent theming
+ * -------------
+ * `--accent` and its derived shades are injected server-side on <html> by
+ * app/layout.tsx from the shop's Settings value. The declarations below are
+ * only a pre-hydration fallback so the first paint is never unstyled.
+ */
+:root {
+  --accent: #31042f;
+  --accent-strong: color-mix(in srgb, var(--accent) 82%, #000000);
+  --accent-soft: color-mix(in srgb, var(--accent) 22%, #ffffff);
+  --accent-softer: color-mix(in srgb, var(--accent) 10%, #ffffff);
+  --accent-wash: color-mix(in srgb, var(--accent) 12%, #ffffff);
+  --accent-on: #ffffff;
+
+  --primary: var(--accent);
+  --secondary: var(--accent);
+  --tertiary: #9a8c86;
+}
+
+body {
+  font-family: var(--font-poppins), system-ui, -apple-system, "Segoe UI", sans-serif;
+  background-color: #FFFFFF;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--accent);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-strong);
+}
+
+/* Selection follows the accent too. */
+::selection {
+  background: var(--accent);
+  color: var(--accent-on);
+}
+
+@layer utilities {
+  .minimal-input {
+    @apply w-full bg-transparent border-b border-black/10 py-2 text-[#000000] transition-colors placeholder:text-[#000000];
+    &:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+  }
+}
+
+/*
+ * Printing: browsers often strip author colours, so re-assert the accent on
+ * the invoice/receipt roots with `-webkit-print-color-adjust` to keep the
+ * printed output on-brand.
+ */
+@media print {
+  html,
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
+/* Hide number input spin buttons */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+@theme inline {
+  --color-primary: var(--accent);
+  --color-secondary: var(--accent);
+  --color-tertiary: #9a8c86;
+  --animate-float: float 3s ease-in-out infinite;
+  --animate-swing: swing 2.5s ease-in-out infinite;
+  --animate-pop: pop 2s ease-in-out infinite;
+  --animate-pulse-slow: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-3px); }
+  }
+  @keyframes swing {
+    0%, 100% { transform: rotate(-5deg); }
+    50% { transform: rotate(5deg); }
+  }
+  @keyframes pop {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+  }
+}
