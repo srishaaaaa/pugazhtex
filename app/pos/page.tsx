@@ -2373,11 +2373,11 @@ export default function POSBilling() {
           {/* Logo with Gradient Hover Glow */}
           <div className="relative group mb-6">
             <div className="absolute -inset-1.5 bg-gradient-to-r from-[var(--accent)] to-[var(--accent)] rounded-2xl blur opacity-30 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
-            <div className="relative w-20 h-20 bg-white rounded-2xl p-3.5 border border-[var(--accent)]/30 shadow-lg flex items-center justify-center">
+            <div className="relative w-20 h-20 rounded-2xl overflow-hidden border border-[var(--accent)]/30 shadow-lg">
               <img
                 src={shopSettings.logo_data_url || "/logo.png"}
                 alt={`${shopSettings.shop_name} Logo`}
-                className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500"
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
               />
             </div>
           </div>
@@ -3430,7 +3430,7 @@ export default function POSBilling() {
                   <img
                     src={shopSettings.logo_data_url || "/logo.png"}
                     alt={`${shopSettings.shop_name} Logo`}
-                    className="w-full h-full object-contain"
+                    className="w-full h-full object-cover"
                   />
                 </div>
                 <div>

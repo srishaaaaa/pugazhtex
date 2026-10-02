@@ -514,11 +514,11 @@ export default function SettingsPanel({
               <ImageIcon className="w-3.5 h-3.5" /> Shop Logo
             </p>
             <div className="flex items-center gap-4">
-              <div className="w-20 h-20 rounded-2xl bg-white border border-[var(--accent)]/30 shadow-sm flex items-center justify-center p-2 shrink-0">
+              <div className="w-20 h-20 rounded-2xl overflow-hidden border border-[var(--accent)]/30 shadow-sm shrink-0">
                 <img
                   src={logoPreview}
                   alt="Shop logo preview"
-                  className="w-full h-full object-contain"
+                  className="w-full h-full object-cover"
                 />
               </div>
               <div className="flex flex-col gap-2 min-w-0">

@@ -304,11 +304,11 @@ export default async function InvoicePage({
         {/* Header: Company & Invoice Info */}
         <div className="flex flex-col sm:flex-row justify-between items-start gap-6 pb-6 border-b-2 border-[var(--accent)]">
           <div className="flex items-start gap-3.5 sm:gap-4">
-            <div className="w-14 h-14 sm:w-16 sm:h-16 shrink-0 rounded-sm border border-[var(--accent)]/30 overflow-hidden bg-white p-1">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 shrink-0 rounded-sm border border-[var(--accent)]/30 overflow-hidden">
               <img
                 src={shopLogo}
                 alt={shop.shop_name}
-                className="w-full h-full object-contain"
+                className="w-full h-full object-cover"
               />
             </div>
             <div className="space-y-1">

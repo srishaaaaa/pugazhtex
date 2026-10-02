@@ -96,7 +96,7 @@ export default function PWAHandler({
           <img
             src={logo}
             alt=""
-            className="w-full h-full object-contain p-1"
+            className="w-full h-full object-cover"
           />
         ) : (
           <Smartphone className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--accent)]" />
