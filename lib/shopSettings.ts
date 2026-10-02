@@ -33,7 +33,7 @@ async function ensureSchema(): Promise<void> {
       )
     `;
     // Idempotent migration for databases created before theming existed.
-    await sql`ALTER TABLE shop_settings ADD COLUMN IF NOT EXISTS accent_color TEXT NOT NULL DEFAULT '#31042F'`;
+    await sql`ALTER TABLE shop_settings ADD COLUMN IF NOT EXISTS accent_color TEXT NOT NULL DEFAULT '#8C1C13'`;
     schemaChecked = true;
   } catch (err) {
     console.error('Failed to ensure shop_settings table:', err);

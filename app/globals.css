@@ -8,7 +8,7 @@
  * only a pre-hydration fallback so the first paint is never unstyled.
  */
 :root {
-  --accent: #31042f;
+  --accent: #8c1c13;
   --accent-strong: color-mix(in srgb, var(--accent) 82%, #000000);
   --accent-soft: color-mix(in srgb, var(--accent) 22%, #ffffff);
   --accent-softer: color-mix(in srgb, var(--accent) 10%, #ffffff);

@@ -2375,7 +2375,7 @@ export default function POSBilling() {
             <div className="absolute -inset-1.5 bg-gradient-to-r from-[var(--accent)] to-[var(--accent)] rounded-2xl blur opacity-30 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
             <div className="relative w-20 h-20 bg-white rounded-2xl p-3.5 border border-[var(--accent)]/30 shadow-lg flex items-center justify-center">
               <img
-                src={shopSettings.logo_data_url || "/logo.svg"}
+                src={shopSettings.logo_data_url || "/logo.png"}
                 alt={`${shopSettings.shop_name} Logo`}
                 className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500"
               />
@@ -3428,7 +3428,7 @@ export default function POSBilling() {
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-xl flex items-center justify-center shadow-md overflow-hidden shrink-0 border border-white/25">
                   <img
-                    src={shopSettings.logo_data_url || "/logo.svg"}
+                    src={shopSettings.logo_data_url || "/logo.png"}
                     alt={`${shopSettings.shop_name} Logo`}
                     className="w-full h-full object-contain"
                   />

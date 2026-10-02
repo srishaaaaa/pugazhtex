@@ -12,7 +12,7 @@ export async function GET() {
   const iconType = icon.startsWith("data:")
     ? icon.slice(5, icon.indexOf(";"))
     : icon.endsWith(".svg")
-      ? "image/svg+xml"
+      ? "image/png"
       : icon.endsWith(".png")
         ? "image/png"
         : "image/jpeg";
@@ -36,9 +36,9 @@ export async function GET() {
   // Fall back to the bundled logo when an uploaded (data URL) icon is rejected.
   if (shop.logo_data_url) {
     manifest.icons.push({
-      src: "/logo.svg",
+      src: "/logo.png",
       sizes: "any",
-      type: "image/svg+xml",
+      type: "image/png",
       purpose: "any",
     });
   }

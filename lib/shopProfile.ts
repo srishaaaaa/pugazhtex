@@ -13,11 +13,11 @@ import type { ShopSettings } from './types';
  */
 
 /** Fallback used when the shop has never chosen a colour. */
-export const DEFAULT_ACCENT = '#31042F';
+export const DEFAULT_ACCENT = '#8C1C13';
 
 /** Preset swatches offered in Settings. */
 export const ACCENT_PRESETS: string[] = [
-  '#31042F', '#7C1D3A', '#9F1239', '#B91C1C', '#C2410C',
+  '#8C1C13', '#31042F', '#7C1D3A', '#9F1239', '#B91C1C', '#C2410C',
   '#A16207', '#15803D', '#047857', '#0F766E', '#0E7490',
   '#1D4ED8', '#4338CA', '#6D28D9', '#7E22CE', '#A21CAF',
   '#9333EA', '#C026D3', '#BE185D', '#475569', '#1C1917',
@@ -91,17 +91,17 @@ export function accentCssVars(accent: string): Record<string, string> {
  * used from client components.
  */
 export const DEFAULT_SHOP_SETTINGS: ShopSettings = {
-  owner_name: 'Ananthi M',
-  shop_name: 'Dhanyas Boutique',
-  tagline: 'Designer Wear • Tailoring • Alterations • Embroidery',
-  phone: '8098089591',
-  email: 'dhanyasboutique2015@gmail.com',
-  address: 'Kasthoribhai road, AGM Apartment, Kumbakonam - 612001',
-  location: 'Kumbakonam, Tamil Nadu',
+  owner_name: 'Sri Sakthi Pugazh Tex',
+  shop_name: 'Sri Sakthi Pugazh Tex',
+  tagline: 'All Kinds of Saree Manufacturer • Wholesale & Retail',
+  phone: '7358670411',
+  email: '',
+  address: 'No. 185, Le Sitharas Square, Mudichur Road, Next to HP Petrol Pump, Mudichur, Chennai - 600048',
+  location: 'Mudichur, Chennai, Tamil Nadu',
   instagram_url: 'https://www.instagram.com/srisakthipugazhtex',
-  business_hours: 'Open Daily',
+  business_hours: '',
   services:
-    'Custom Tailoring • Designer Blouses & Dresses • Alterations & Fittings • Embroidery & Aari Work • Boutique Wear',
+    'All Kinds of Sarees • Wholesale & Retail • Manufacturer',
   gstin: '',
   accent_color: DEFAULT_ACCENT,
   logo_data_url: null,
@@ -122,9 +122,9 @@ export const instagramHandle = (url: string): string => {
 
 /** Logo src to render: uploaded logo when present, otherwise the bundled asset. */
 export const shopLogoSrc = (settings: ShopSettings): string =>
-  settings.logo_data_url || '/logo.svg';
+  settings.logo_data_url || '/logo.png';
 
-/** Phone split for invoice headers, e.g. 8098089591 -> +91 80980 89591 */
+/** Phone split for invoice headers, e.g. 7358670411 -> +91 73586 70411 */
 export const formatPhone = (phone: string): string => {
   const digits = (phone || '').replace(/\D/g, '');
   const local = digits.length > 10 ? digits.slice(-10) : digits;

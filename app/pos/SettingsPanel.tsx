@@ -256,7 +256,7 @@ function ThemePicker({
         <input
           value={custom}
           onChange={(e) => commitCustom(e.target.value)}
-          placeholder="#31042F"
+          placeholder="#8C1C13"
           spellCheck={false}
           className="w-32 bg-white border border-[#000000]/15 rounded-lg px-3 py-2 text-sm font-mono font-semibold text-[#000000] focus:outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/20 transition-colors"
         />
@@ -372,7 +372,7 @@ export default function SettingsPanel({
     }
   };
 
-  const logoPreview = form.logo_data_url || "/logo.svg";
+  const logoPreview = form.logo_data_url || "/logo.png";
 
   return (
     <div className="flex-1 flex flex-col max-w-[1400px] mx-auto w-full pb-8 pr-2 animate-in fade-in duration-300 gap-6">

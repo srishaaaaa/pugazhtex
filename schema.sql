@@ -170,7 +170,7 @@ CREATE TABLE IF NOT EXISTS shop_settings (
   business_hours TEXT NOT NULL DEFAULT '',
   services       TEXT NOT NULL DEFAULT '',
   gstin          TEXT NOT NULL DEFAULT '',
-  accent_color   TEXT NOT NULL DEFAULT '#31042F',
+  accent_color   TEXT NOT NULL DEFAULT '#8C1C13',
   logo_data_url  TEXT,
   updated_at     TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -180,19 +180,19 @@ INSERT INTO shop_settings (
   address, location, instagram_url, business_hours, services, gstin, logo_data_url, accent_color
 ) VALUES (
   'default',
-  'Ananthi M',
-  'Dhanyas Boutique',
-  'Designer Wear • Tailoring • Alterations • Embroidery',
-  '8098089591',
-  'dhanyasboutique2015@gmail.com',
-  'Kasthoribhai road, AGM Apartment, Kumbakonam - 612001',
-  'Kumbakonam, Tamil Nadu',
+  'Sri Sakthi Pugazh Tex',
+  'Sri Sakthi Pugazh Tex',
+  'All Kinds of Saree Manufacturer • Wholesale & Retail',
+  '7358670411',
+  '',
+  'No. 185, Le Sitharas Square, Mudichur Road, Next to HP Petrol Pump, Mudichur, Chennai - 600048',
+  'Mudichur, Chennai, Tamil Nadu',
   'https://www.instagram.com/srisakthipugazhtex',
-  'Open Daily',
-  'Custom Tailoring • Designer Blouses & Dresses • Alterations & Fittings • Embroidery & Aari Work • Boutique Wear',
+  '',
+  'All Kinds of Sarees • Wholesale & Retail • Manufacturer',
   '',
   NULL,
-  '#31042F'
+  '#8C1C13'
 )
 ON CONFLICT (id) DO NOTHING;
 
