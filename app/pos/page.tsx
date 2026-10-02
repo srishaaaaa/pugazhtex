@@ -85,6 +85,7 @@ import {
 import { Product, Expense, Category, AdvanceOrderWithRelations, AdvanceOrderStatus, ShopSettings, ItemType, effectivePrice } from "@/lib/types";
 import { DEFAULT_SHOP_SETTINGS } from "@/lib/shopProfile";
 import SettingsPanel from "./SettingsPanel";
+import LowStockAlarm, { type LowStockItem } from "./LowStockAlarm";
 
 // Preset expense categories (users can also type a custom one)
 const EXPENSE_CATEGORIES = [
@@ -522,6 +523,67 @@ export default function POSBilling() {
 
   // Main scroll container ref for resetting scroll to top
   const mainScrollRef = useRef<HTMLElement | null>(null);
+
+  // Low-stock alarm shown on opening Inventory. It only sounds when some item
+  // is newly low since the last acknowledgement; otherwise it opens silenced.
+  const LOW_STOCK_ACK_KEY = "pos_low_stock_ack";
+  const [lowStockAlarm, setLowStockAlarm] = useState<{
+    items: LowStockItem[];
+    sounding: boolean;
+  } | null>(null);
+
+  const readAckedLowStock = (): string[] => {
+    try {
+      const raw = localStorage.getItem(LOW_STOCK_ACK_KEY);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  };
+
+  const openInventory = () => {
+    setActiveTab("inventory");
+    setCompletedBillData(null);
+    if (mainScrollRef.current) mainScrollRef.current.scrollTop = 0;
+    window.scrollTo({ top: 0, behavior: "instant" });
+
+    const low: LowStockItem[] = catalog
+      .filter(
+        (c) =>
+          c.itemType !== "SERVICE" &&
+          c.stock !== null &&
+          c.stock !== undefined &&
+          c.lowStockAlert !== null &&
+          c.lowStockAlert !== undefined &&
+          Number(c.stock) <= Number(c.lowStockAlert),
+      )
+      .sort((a, b) => Number(a.stock) - Number(b.stock))
+      .map((c) => ({
+        id: c.id,
+        name: c.name,
+        category: c.category,
+        stock: Number(c.stock),
+        alertAt: Number(c.lowStockAlert),
+      }));
+    if (low.length === 0) return;
+    const acked = new Set(readAckedLowStock());
+    setLowStockAlarm({ items: low, sounding: low.some((i) => !acked.has(i.id)) });
+  };
+
+  const acknowledgeLowStock = () => {
+    // Remember exactly the items low right now; anything restocked drops out,
+    // so it alarms again if it runs low later.
+    try {
+      localStorage.setItem(
+        LOW_STOCK_ACK_KEY,
+        JSON.stringify(lowStockAlarm?.items.map((i) => i.id) ?? []),
+      );
+    } catch {
+      // Storage unavailable: the alarm simply sounds again next time.
+    }
+    setLowStockAlarm(null);
+  };
 
   // Whenever activeTab, analyticsSubTab, or analyticsGstFilter changes, reset scroll to top
   useEffect(() => {
@@ -3505,12 +3567,7 @@ export default function POSBilling() {
               </button>
               {role === "admin" && (
                 <button
-                  onClick={() => {
-                    setActiveTab("inventory");
-                    setCompletedBillData(null);
-                    if (mainScrollRef.current) mainScrollRef.current.scrollTop = 0;
-                    window.scrollTo({ top: 0, behavior: "instant" });
-                  }}
+                  onClick={openInventory}
                   className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer ${
                     activeTab === "inventory"
                       ? "bg-white text-[#27272A] shadow-md"
@@ -8034,12 +8091,7 @@ export default function POSBilling() {
             categories={categories}
             onSaved={setShopSettings}
             onCatalogueChanged={fetchData}
-            onOpenInventory={() => {
-              setActiveTab("inventory");
-              setCompletedBillData(null);
-              if (mainScrollRef.current) mainScrollRef.current.scrollTop = 0;
-              window.scrollTo({ top: 0, behavior: "instant" });
-            }}
+            onOpenInventory={openInventory}
           />
         )}
 
@@ -8066,6 +8118,14 @@ export default function POSBilling() {
           </div>
         </footer>
       </main>
+
+      {lowStockAlarm && (
+        <LowStockAlarm
+          items={lowStockAlarm.items}
+          sounding={lowStockAlarm.sounding}
+          onAcknowledge={acknowledgeLowStock}
+        />
+      )}
     </div>
   );
 }
