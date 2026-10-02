@@ -53,6 +53,28 @@ async function filterLiveProductIds(ids: (string | null | undefined)[]): Promise
   return live;
 }
 
+/**
+ * Map typed-in line names (no catalogue pick) to a product id when exactly one
+ * catalogue product carries that name, so its stock still moves on sale.
+ * Ambiguous or unknown names stay unlinked.
+ */
+async function matchProductIdsByName(names: string[]): Promise<Map<string, string>> {
+  const wanted = [...new Set(names.map((n) => n.trim().toLowerCase()).filter(Boolean))];
+  const matches = new Map<string, string>();
+  if (wanted.length === 0) return matches;
+  const rows = await sql`
+    SELECT lower(trim(name)) AS key, min(id::text) AS id
+    FROM products
+    WHERE lower(trim(name)) = ANY(${wanted})
+    GROUP BY lower(trim(name))
+    HAVING count(*) = 1
+  `;
+  for (const row of rows as unknown as { key: string; id: string }[]) {
+    matches.set(row.key, row.id);
+  }
+  return matches;
+}
+
 async function ensureCustomerSchema(): Promise<void> {
   if (customerSchemaChecked) return;
   try {
@@ -389,12 +411,18 @@ export const dbStore = {
     const liveProductIds = await filterLiveProductIds(
       payload.items.map((item) => item.product_id),
     );
+    const linkedId = (item: CartItem) =>
+      item.product_id && liveProductIds.has(item.product_id) ? item.product_id : null;
+    // Lines typed by hand (never picked from the catalogue) are linked by name.
+    const nameMatches = await matchProductIdsByName(
+      payload.items.filter((item) => !linkedId(item)).map((item) => item.name || ''),
+    );
 
     // Each cart line becomes one order item, snapshotting its name and price.
     const finalOrderItems: Omit<OrderItemRow, 'id'>[] = payload.items.map((item) => ({
       order_id: payload.orderId,
       product_id:
-        item.product_id && liveProductIds.has(item.product_id) ? item.product_id : null,
+        linkedId(item) ?? nameMatches.get((item.name || '').trim().toLowerCase()) ?? null,
       snapshot_name: item.name,
       snapshot_price: item.price,
       quantity: item.qty,
@@ -440,9 +468,9 @@ export const dbStore = {
     // Sell-through: reduce stock for every catalogued product on the bill.
     // Services have NULL stock and are skipped by the query.
     await Promise.all(
-      payload.items
-        .filter((item) => item.product_id)
-        .map((item) => this.decrementStock(item.product_id as string, item.qty)),
+      finalOrderItems
+        .filter((oi) => oi.product_id)
+        .map((oi) => this.decrementStock(oi.product_id as string, oi.quantity)),
     );
 
     return { orderId: payload.orderId };
