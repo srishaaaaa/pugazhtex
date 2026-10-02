@@ -1175,19 +1175,17 @@ export default function POSBilling() {
     setCatalog((prev) => prev.filter((c) => c.id !== id));
   };
 
-  // Product prices are GST-inclusive. Subtotal already contains GST; we back-derive
-  // the GST portion for display and never add it on top of the grand total.
+  // Product prices are GST-exclusive. GST is charged on the discounted subtotal
+  // (the taxable value) and added on top of it in the grand total.
   const subtotal = items.reduce((acc, item) => acc + item.price * item.qty, 0);
   const calculatedDiscount =
     discountType === "percent"
       ? subtotal * (discountValue / 100)
       : discountValue;
-  const netInclusive = Math.max(0, subtotal - calculatedDiscount);
+  const taxableValue = Math.max(0, subtotal - calculatedDiscount);
   const gstAmount =
-    applyGST && gstPercentage > 0
-      ? netInclusive - netInclusive / (1 + gstPercentage / 100)
-      : 0;
-  const grandTotal = netInclusive + deliveryFee;
+    applyGST && gstPercentage > 0 ? taxableValue * (gstPercentage / 100) : 0;
+  const grandTotal = taxableValue + gstAmount + deliveryFee;
 
   // Suggest a GST % from the products currently in the cart (their per-product
   // default rate). Used to pre-fill the changeable GST field when a GST invoice
@@ -1499,13 +1497,13 @@ export default function POSBilling() {
       discountType === "percent"
         ? localSubtotal * (discountValue / 100)
         : discountValue;
-    // Prices are GST-inclusive: derive GST from subtotal instead of adding on top.
-    const localNetInclusive = Math.max(0, localSubtotal - localCalculatedDiscount);
+    // Prices are GST-exclusive: GST is added on top of the discounted subtotal.
+    const localTaxableValue = Math.max(0, localSubtotal - localCalculatedDiscount);
     const localGstAmount =
       applyGST && gstPercentage > 0
-        ? localNetInclusive - localNetInclusive / (1 + gstPercentage / 100)
+        ? localTaxableValue * (gstPercentage / 100)
         : 0;
-    const localGrandTotal = localNetInclusive + deliveryFee;
+    const localGrandTotal = localTaxableValue + localGstAmount + deliveryFee;
 
     // Validate totals against PostgreSQL numeric(10,2) overflow limit (99,999,999.99)
     const MAX_LIMIT = 99999999.99;
@@ -1700,18 +1698,15 @@ export default function POSBilling() {
     let message = `${shopEmoji} *${shopSettings.shop_name}* ${shopEmoji}\n\n`;
     message += `${checkEmoji} Here are your ${order.isGst ? "GST invoice" : "bill"} details!\n\n`;
 
-    message += `Subtotal (incl. GST): ₹${order.subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}\n`;
+    message += `Subtotal: ₹${order.subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}\n`;
     if (order.discount > 0) {
       message += `Discount Applied: -₹${order.discount.toLocaleString(undefined, { minimumFractionDigits: 2 })}\n`;
     }
 
-    // GST already sits inside the subtotal — surface it for the customer only.
-    const gstInsideBill = Number(order.gstAmount) || 0;
-    if (order.isGst && gstInsideBill > 0.1) {
-      const gstLabel = order.gstPercentage
-        ? `GST (${order.gstPercentage}% incl.)`
-        : "GST (incl.)";
-      message += `${gstLabel}: ₹${gstInsideBill.toLocaleString(undefined, { minimumFractionDigits: 2 })}\n`;
+    const gstOnBill = Number(order.gstAmount) || 0;
+    if (order.isGst && gstOnBill > 0.1) {
+      const gstLabel = order.gstPercentage ? `GST (${order.gstPercentage}%)` : "GST";
+      message += `${gstLabel}: ₹${gstOnBill.toLocaleString(undefined, { minimumFractionDigits: 2 })}\n`;
     }
 
     if (order.deliveryFee > 0) {
@@ -4497,7 +4492,7 @@ export default function POSBilling() {
                             {items
                               .filter((i) => i.name)
                               .reduce((sum, i) => sum + i.qty, 0)}{" "}
-                            items) <span className="text-[9px] font-bold text-[var(--accent-strong)] uppercase">incl. GST</span>
+                            items)
                           </span>
                           <span className="font-bold text-[#000000]">
                             ₹
@@ -4542,7 +4537,7 @@ export default function POSBilling() {
                           {applyGST && (
                             <div className="flex justify-between items-center">
                               <span className="text-xs font-bold text-[#000000] uppercase tracking-wider">
-                                GST <span className="text-[9px] font-bold text-[var(--accent-strong)]">(incl.)</span>
+                                GST <span className="text-[9px] font-bold text-[var(--accent-strong)]">(+ extra)</span>
                               </span>
                               <div className="flex items-center gap-2">
                                 <div className="flex items-center gap-1">

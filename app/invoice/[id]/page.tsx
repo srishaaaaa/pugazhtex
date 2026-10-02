@@ -145,6 +145,14 @@ export default async function InvoicePage({
         ? "GPay"
         : "Cash";
 
+  // Bills saved before the switch to GST-exclusive pricing have GST embedded in
+  // the subtotal: their total is subtotal - discount + delivery with no GST added.
+  const gstIncluded =
+    order.is_gst &&
+    gstAmountNum > 0 &&
+    Math.abs(subtotalNum - discountNum + deliveryFeeNum - grandTotalNum) < 0.01;
+  const taxableValueNum = Math.max(0, subtotalNum - discountNum);
+
   const halfGstRate = order.gst_percentage ? order.gst_percentage / 2 : 9;
   const halfGstAmount = gstAmountNum > 0 ? gstAmountNum / 2 : 0;
 
@@ -280,6 +288,18 @@ export default async function InvoicePage({
                 <span>-{discountNum.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
               </div>
             )}
+            {order.is_gst && gstAmountNum > 0 && (
+              <>
+                <div className="flex justify-between">
+                  <span>CGST ({halfGstRate}%){gstIncluded ? " incl." : ""}:</span>
+                  <span>{halfGstAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>SGST ({halfGstRate}%){gstIncluded ? " incl." : ""}:</span>
+                  <span>{halfGstAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                </div>
+              </>
+            )}
             {deliveryFeeNum > 0 && (
               <div className="flex justify-between">
                 <span>Delivery:</span>
@@ -406,10 +426,10 @@ export default async function InvoicePage({
                 {order.is_gst && <th className="pb-3 text-center w-16">HSN</th>}
                 <th className="pb-3 text-center w-12">Qty</th>
                 <th className="pb-3 text-right w-24">
-                  Rate (₹){order.is_gst && <span className="block text-[8px] font-normal normal-case tracking-normal text-zinc-400">incl. GST</span>}
+                  Rate (₹){gstIncluded && <span className="block text-[8px] font-normal normal-case tracking-normal text-zinc-400">incl. GST</span>}
                 </th>
                 <th className="pb-3 text-right w-28">
-                  Amount (₹){order.is_gst && <span className="block text-[8px] font-normal normal-case tracking-normal text-zinc-400">incl. GST</span>}
+                  Amount (₹){gstIncluded && <span className="block text-[8px] font-normal normal-case tracking-normal text-zinc-400">incl. GST</span>}
                 </th>
               </tr>
             </thead>
@@ -530,7 +550,7 @@ export default async function InvoicePage({
             <div className="flex justify-between text-zinc-600">
               <span>
                 Subtotal
-                {order.is_gst && (
+                {gstIncluded && (
                   <span className="text-[9px] font-semibold text-zinc-400 uppercase ml-1">
                     incl. GST
                   </span>
@@ -554,9 +574,18 @@ export default async function InvoicePage({
 
             {order.is_gst && gstAmountNum > 0 && (
               <>
-                <div className="pt-1 mt-1 border-t border-dashed border-zinc-200 text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">
-                  GST (included above)
-                </div>
+                {gstIncluded ? (
+                  <div className="pt-1 mt-1 border-t border-dashed border-zinc-200 text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">
+                    GST (included above)
+                  </div>
+                ) : (
+                  <div className="flex justify-between text-zinc-600 pt-1 mt-1 border-t border-dashed border-zinc-200">
+                    <span>Taxable Value</span>
+                    <span className="font-mono text-zinc-900">
+                      ₹{taxableValueNum.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between text-zinc-600">
                   <span>CGST ({halfGstRate.toFixed(1)}%)</span>
                   <span className="font-mono text-zinc-800">

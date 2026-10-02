@@ -14,7 +14,7 @@ export type Product = {
   category: string;
   gst_rate: number; // Default GST % for this product (editable at billing)
   hsn_code: string | null; // HSN/SAC code shown on GST invoices
-  selling_price: number; // GST-inclusive catalog price
+  selling_price: number; // GST-exclusive catalog price
   item_type: ItemType; // SERVICE rows never track stock
   cost_price: number; // Records only — never used in billing maths
   current_stock: number | null; // null for services
@@ -53,12 +53,12 @@ export type OrderRow = {
   source: 'ONLINE' | 'OFFLINE';
   status: 'COMPLETED' | 'PENDING';
   is_gst: boolean; // true = GST invoice, false = non-GST bill
-  subtotal: number; // GST-inclusive (line price × qty)
+  subtotal: number; // GST-exclusive (line price × qty); older bills stored it GST-inclusive
   discount_type: 'PERCENT' | 'FIXED';
   discount_value: number;
   discount_amount: number;
   gst_percentage: number;
-  gst_amount: number; // GST inside subtotal-discount (derived)
+  gst_amount: number; // GST charged on (subtotal - discount)
   delivery_fee: number;
   grand_total: number; // = subtotal - discount + delivery
   cash_received: number; // total amount tendered (cash for CASH, gpay amount for GPAY, cash+gpay for SPLIT)

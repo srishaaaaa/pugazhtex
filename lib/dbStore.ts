@@ -401,9 +401,10 @@ export const dbStore = {
       offer_pct: item.offerPct ?? 0,
     }));
 
-    // Subtotal is GST-inclusive (sum of line prices × qty).
-    // grand_total = subtotal - discount + delivery  (GST is embedded in subtotal).
-    const subtotalInclusive = payload.grandTotal + payload.discountAmount - payload.deliveryFee;
+    // Subtotal is GST-exclusive (sum of line prices × qty).
+    // grand_total = subtotal - discount + GST + delivery  (GST is added on top).
+    const subtotalExclusive =
+      payload.grandTotal + payload.discountAmount - payload.gstAmount - payload.deliveryFee;
 
     await sql`
       INSERT INTO orders (
@@ -412,7 +413,7 @@ export const dbStore = {
         cash_received, split_cash, split_gpay, payment_mode, bill_date, created_at
       ) VALUES (
         ${payload.orderId}, ${customer.id}, ${payload.source}, 'COMPLETED', ${payload.isGst},
-        ${subtotalInclusive},
+        ${subtotalExclusive},
         ${payload.discountType}, ${payload.discountValue}, ${payload.discountAmount},
         ${payload.gstPercentage}, ${payload.gstAmount}, ${payload.deliveryFee},
         ${payload.grandTotal}, ${payload.cashReceived},
@@ -590,14 +591,14 @@ export const dbStore = {
       qty: it.quantity,
     }));
 
-    // Grand total math mirrors POSBilling.completeSale (GST-inclusive subtotal).
+    // Grand total math mirrors POSBilling.completeSale (GST-exclusive subtotal).
     const rawSubtotal = cart.reduce((acc, i) => acc + i.price * i.qty, 0);
-    const netInclusive = Math.max(0, rawSubtotal - payload.discountAmount);
+    const taxableValue = Math.max(0, rawSubtotal - payload.discountAmount);
     const gstAmount =
       payload.isGst && payload.gstPercentage > 0
-        ? netInclusive - netInclusive / (1 + payload.gstPercentage / 100)
+        ? taxableValue * (payload.gstPercentage / 100)
         : 0;
-    const grandTotal = netInclusive + payload.deliveryFee;
+    const grandTotal = taxableValue + gstAmount + payload.deliveryFee;
 
     const { orderId } = await this.submitOrder({
       orderId: payload.invoiceId,
