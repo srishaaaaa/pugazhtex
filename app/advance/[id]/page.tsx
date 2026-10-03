@@ -1,4 +1,4 @@
-import { dbStore } from "@/lib/dbStore";
+import { dbStore, advanceBill } from "@/lib/dbStore";
 import { getShopSettings, shopLogoSrc, formatPhone } from "@/lib/shopSettings";
 import { ArrowLeft, FileText } from "lucide-react";
 import Link from "next/link";
@@ -46,6 +46,10 @@ export default async function AdvanceReceiptPage({
   const totalNum = Number(advance.total_amount) || 0;
   const depositNum = Number(advance.deposit_amount) || 0;
   const balanceNum = Math.max(0, totalNum - depositNum);
+  const bill = advanceBill(advance);
+  const bookedGst = bill.isGst
+    ? Math.max(0, bill.subtotal - bill.discountAmount) * (bill.gstPercentage / 100)
+    : 0;
   const depositLabel =
     advance.deposit_payment_mode === "GPAY" ? "GPay" : "Cash";
 
@@ -246,7 +250,35 @@ export default async function AdvanceReceiptPage({
           </div>
 
           <div className="w-full sm:w-64 space-y-2 text-xs">
-            <div className="flex justify-between text-zinc-600">
+            {(bill.discountAmount > 0 || bookedGst > 0 || bill.deliveryFee > 0) && (
+              <>
+                <div className="flex justify-between text-zinc-600">
+                  <span>Items Subtotal</span>
+                  <span className="font-mono text-zinc-900">₹{fmt(bill.subtotal)}</span>
+                </div>
+                {bill.discountAmount > 0 && (
+                  <div className="flex justify-between text-zinc-600">
+                    <span>
+                      Discount{bill.discountType === "PERCENT" && bill.discountValue > 0 ? ` (${bill.discountValue}%)` : ""}
+                    </span>
+                    <span className="font-mono text-zinc-900">− ₹{fmt(bill.discountAmount)}</span>
+                  </div>
+                )}
+                {bookedGst > 0 && (
+                  <div className="flex justify-between text-zinc-600">
+                    <span>GST ({bill.gstPercentage}%)</span>
+                    <span className="font-mono text-zinc-900">₹{fmt(bookedGst)}</span>
+                  </div>
+                )}
+                {bill.deliveryFee > 0 && (
+                  <div className="flex justify-between text-zinc-600">
+                    <span>Delivery Fee</span>
+                    <span className="font-mono text-zinc-900">₹{fmt(bill.deliveryFee)}</span>
+                  </div>
+                )}
+              </>
+            )}
+            <div className="flex justify-between text-zinc-600 font-semibold">
               <span>Order Total</span>
               <span className="font-mono text-zinc-900">₹{fmt(totalNum)}</span>
             </div>

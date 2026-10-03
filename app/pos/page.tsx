@@ -69,6 +69,7 @@ import {
   removeProduct,
   fetchExpenses,
   createExpense,
+  editExpense,
   removeExpense,
   fetchCategories,
   createCategory,
@@ -493,6 +494,9 @@ export default function POSBilling() {
     new Date().toISOString().split("T")[0],
   );
   const [isSavingExpense, setIsSavingExpense] = useState(false);
+  // When set, the expense form edits this entry instead of adding a new one.
+  const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
+  const expenseFormRef = useRef<HTMLDivElement | null>(null);
   const [expensePeriod, setExpensePeriod] = useState<
     "all" | "today" | "week" | "month" | "year" | "custom"
   >("month");
@@ -1199,6 +1203,7 @@ export default function POSBilling() {
       );
 
       if (catalogTargetRowId) {
+        updateItem(catalogTargetRowId, "product_id", data.id);
         updateItem(catalogTargetRowId, "name", data.name);
         updateItem(catalogTargetRowId, "price", effectivePrice(data));
         updateItem(catalogTargetRowId, "offerPct", Number(data.offer_discount_pct) || 0);
@@ -1210,10 +1215,12 @@ export default function POSBilling() {
       setShowCatalogModal(false);
     } else {
       const product = await createProduct(productPayload);
+      if (!product?.id) throw new Error("Product was not saved");
       const newItem = productToCatalogItem(product);
-      setCatalog([...catalog, newItem]);
+      setCatalog((prev) => [...prev, newItem]);
 
       if (catalogTargetRowId) {
+        updateItem(catalogTargetRowId, "product_id", product.id);
         updateItem(catalogTargetRowId, "name", product.name);
         updateItem(catalogTargetRowId, "price", effectivePrice(product));
         updateItem(
@@ -1227,14 +1234,30 @@ export default function POSBilling() {
       resetCatalogForm();
       setShowCatalogModal(false);
     }
+    } catch (err) {
+      console.error("Failed to save product:", err);
+      alert(
+        "Could not save this item to the database. Check your connection and try again — nothing was added.",
+      );
+      return;
     } finally {
       setIsSavingCatalog(false);
     }
+
+    // Re-read the catalogue so the list shows exactly what the database holds.
+    fetchProducts()
+      .then((data) => setCatalog(data.map(productToCatalogItem)))
+      .catch((err) => console.error("Catalogue refresh failed:", err));
   };
 
   const deleteFromCatalog = async (id: string) => {
-    await removeProduct(id);
-    setCatalog((prev) => prev.filter((c) => c.id !== id));
+    try {
+      await removeProduct(id);
+      setCatalog((prev) => prev.filter((c) => c.id !== id));
+    } catch (err) {
+      console.error("Failed to delete product:", err);
+      alert("Could not delete this item. Please try again.");
+    }
   };
 
   // Product prices are GST-exclusive. GST is charged on the discounted subtotal
@@ -1332,6 +1355,14 @@ export default function POSBilling() {
         totalAmount: grandTotal,
         depositAmount: deposit,
         depositPaymentMode: advDepositPaymentMode,
+        // Keep the bill adjustments so the final invoice matches this total.
+        discountType: discountType === "percent" ? "PERCENT" : "FIXED",
+        discountValue: Number(discountValue) || 0,
+        discountAmount: calculatedDiscount,
+        isGst: applyGST,
+        gstPercentage: applyGST ? gstPercentage : 0,
+        gstAmount,
+        deliveryFee,
         deliveryDate: advDeliveryDate || null,
         notes: advNotes.trim() || null,
         items: items.map((i) => ({
@@ -1857,14 +1888,32 @@ export default function POSBilling() {
     }
     setIsSavingExpense(true);
     try {
-      const created = await createExpense({
+      const fields = {
         title: expTitle.trim(),
         category,
         amount: amountNum,
         payment_mode: expPaymentMode,
         notes: expNotes.trim() || null,
         expense_date: expDate,
-      });
+      };
+      if (editingExpenseId) {
+        const updated = await editExpense(editingExpenseId, fields);
+        if (!updated) {
+          alert("This expense no longer exists — it may have been deleted.");
+          setExpenses((prev) => prev.filter((e) => e.id !== editingExpenseId));
+        } else {
+          setExpenses((prev) =>
+            prev.map((e) =>
+              e.id === editingExpenseId
+                ? { ...updated, amount: Number(updated.amount) || 0 }
+                : e,
+            ),
+          );
+        }
+        cancelEditExpense();
+        return;
+      }
+      const created = await createExpense(fields);
       setExpenses((prev) => [
         { ...created, amount: Number(created.amount) || 0 },
         ...prev,
@@ -1873,10 +1922,7 @@ export default function POSBilling() {
       setExpTitle("");
       setExpAmount("");
       setExpNotes("");
-      if (expCategory === "__custom__") {
-        setExpCategory(category);
-        setExpCustomCategory("");
-      }
+      // A custom category stays in the custom box, which is what the select shows.
     } catch (err) {
       console.error("Error adding expense:", err);
       alert("Could not save the expense. Please try again.");
@@ -1885,11 +1931,37 @@ export default function POSBilling() {
     }
   };
 
+  const startEditExpense = (e: Expense) => {
+    setEditingExpenseId(e.id);
+    setExpTitle(e.title);
+    setExpAmount(Number(e.amount) || "");
+    setExpPaymentMode(e.payment_mode || "CASH");
+    setExpNotes(e.notes || "");
+    setExpDate(String(e.expense_date).slice(0, 10));
+    if ((EXPENSE_CATEGORIES as readonly string[]).includes(e.category)) {
+      setExpCategory(e.category);
+      setExpCustomCategory("");
+    } else {
+      setExpCategory("__custom__");
+      setExpCustomCategory(e.category);
+    }
+    expenseFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const cancelEditExpense = () => {
+    setEditingExpenseId(null);
+    setExpTitle("");
+    setExpAmount("");
+    setExpNotes("");
+    setExpDate(new Date().toISOString().split("T")[0]);
+  };
+
   const handleDeleteExpense = async (id: string) => {
     if (!window.confirm("Delete this expense? This cannot be undone.")) return;
     try {
       await removeExpense(id);
       setExpenses((prev) => prev.filter((e) => e.id !== id));
+      if (editingExpenseId === id) cancelEditExpense();
     } catch (err) {
       console.error("Error deleting expense:", err);
       alert("Could not delete the expense.");
@@ -7092,10 +7164,15 @@ export default function POSBilling() {
             {/* Two-column: add form + category breakdown */}
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-6">
               {/* Add expense form */}
-              <div className="lg:col-span-2 bg-white border border-black/10 rounded-2xl p-5 shadow-sm h-fit">
+              <div
+                ref={expenseFormRef}
+                className={`lg:col-span-2 bg-white border rounded-2xl p-5 shadow-sm h-fit scroll-mt-4 ${
+                  editingExpenseId ? "border-[var(--accent)] ring-2 ring-[var(--accent)]/20" : "border-black/10"
+                }`}
+              >
                 <h3 className="text-sm font-black text-[#000000] uppercase tracking-wider flex items-center gap-2 mb-4">
                   <span className="w-1.5 h-6 bg-[var(--accent)] rounded-full" />
-                  Add Expense
+                  {editingExpenseId ? "Edit Expense" : "Add Expense"}
                 </h3>
                 <div className="space-y-3">
                   <div>
@@ -7207,9 +7284,19 @@ export default function POSBilling() {
                     disabled={isSavingExpense}
                     className="w-full mt-1 bg-[var(--accent)] hover:bg-[#27272A] disabled:opacity-60 text-white py-3 rounded-lg font-black text-[11px] uppercase tracking-[0.1em] flex items-center justify-center gap-2 transition-transform active:scale-[0.98] shadow-sm cursor-pointer"
                   >
-                    <Plus className="w-4 h-4" />
-                    {isSavingExpense ? "Saving…" : "Add Expense"}
+                    {editingExpenseId ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                    {isSavingExpense ? "Saving…" : editingExpenseId ? "Update Expense" : "Add Expense"}
                   </button>
+                  {editingExpenseId && (
+                    <button
+                      type="button"
+                      onClick={cancelEditExpense}
+                      disabled={isSavingExpense}
+                      className="w-full bg-white border border-black/15 hover:bg-black/5 text-[#000000] py-2.5 rounded-lg font-bold text-[11px] uppercase tracking-[0.1em] transition-colors cursor-pointer"
+                    >
+                      Cancel Edit
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -7382,14 +7469,29 @@ export default function POSBilling() {
                               maximumFractionDigits: 2,
                             })}
                           </td>
-                          <td className="p-3 text-center">
-                            <button
-                              onClick={() => handleDeleteExpense(e.id)}
-                              title="Delete expense"
-                              className="inline-flex items-center justify-center w-8 h-8 bg-[#B91C1C]/10 hover:bg-[#B91C1C]/20 text-[#B91C1C] rounded-md transition-colors cursor-pointer"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+                          <td className="p-3 text-center whitespace-nowrap">
+                            <div className="inline-flex items-center gap-1.5">
+                              <button
+                                onClick={() => startEditExpense(e)}
+                                title="Edit expense"
+                                aria-label="Edit expense"
+                                className={`inline-flex items-center justify-center w-8 h-8 rounded-md transition-colors cursor-pointer ${
+                                  editingExpenseId === e.id
+                                    ? "bg-[var(--accent)] text-white"
+                                    : "bg-black/5 hover:bg-black/10 text-[#000000]"
+                                }`}
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteExpense(e.id)}
+                                title="Delete expense"
+                                aria-label="Delete expense"
+                                className="inline-flex items-center justify-center w-8 h-8 bg-[#B91C1C]/10 hover:bg-[#B91C1C]/20 text-[#B91C1C] rounded-md transition-colors cursor-pointer"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}

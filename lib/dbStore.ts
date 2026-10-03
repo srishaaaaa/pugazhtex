@@ -19,6 +19,24 @@ import {
 // Reset per process so the idempotent column checks only run once.
 let productSchemaChecked = false;
 let customerSchemaChecked = false;
+let advanceSchemaChecked = false;
+
+/** Add the bill-adjustment columns (discount, GST, delivery) to advance_orders. */
+async function ensureAdvanceSchema(): Promise<void> {
+  if (advanceSchemaChecked) return;
+  try {
+    await sql`ALTER TABLE advance_orders ADD COLUMN IF NOT EXISTS discount_type TEXT NOT NULL DEFAULT 'FIXED'`;
+    await sql`ALTER TABLE advance_orders ADD COLUMN IF NOT EXISTS discount_value NUMERIC NOT NULL DEFAULT 0`;
+    await sql`ALTER TABLE advance_orders ADD COLUMN IF NOT EXISTS discount_amount NUMERIC NOT NULL DEFAULT 0`;
+    await sql`ALTER TABLE advance_orders ADD COLUMN IF NOT EXISTS is_gst BOOLEAN NOT NULL DEFAULT false`;
+    await sql`ALTER TABLE advance_orders ADD COLUMN IF NOT EXISTS gst_percentage NUMERIC NOT NULL DEFAULT 0`;
+    await sql`ALTER TABLE advance_orders ADD COLUMN IF NOT EXISTS gst_amount NUMERIC NOT NULL DEFAULT 0`;
+    await sql`ALTER TABLE advance_orders ADD COLUMN IF NOT EXISTS delivery_fee NUMERIC NOT NULL DEFAULT 0`;
+    advanceSchemaChecked = true;
+  } catch (err) {
+    console.error('Failed to ensure advance order schema:', err);
+  }
+}
 
 // Utility to generate a unique ID
 const uid = () => {
@@ -92,6 +110,42 @@ async function ensureCustomerSchema(): Promise<void> {
   } catch (err) {
     console.error('Failed to ensure customer schema:', err);
   }
+}
+
+/**
+ * The bill an advance order settles into: its item subtotal, the discount /
+ * GST / delivery recorded at booking, plus an extra rupee discount taken off
+ * the balance at collection. The extra discount is converted to a pre-GST
+ * amount so the customer pays exactly that much less.
+ */
+export function advanceBill(
+  advance: AdvanceOrderWithRelations,
+  extraDiscountOnBalance = 0,
+) {
+  const subtotal = advance.items.reduce(
+    (acc, it) => acc + Number(it.snapshot_price) * Number(it.quantity),
+    0,
+  );
+  let bookedDiscount = Number(advance.discount_amount) || 0;
+  const isGst = Boolean(advance.is_gst) && Number(advance.gst_percentage) > 0;
+  const gstPercentage = isGst ? Number(advance.gst_percentage) : 0;
+  const deliveryFee = Number(advance.delivery_fee) || 0;
+  // Advances booked before these columns existed only kept the total; any gap
+  // below the item subtotal was the bill discount.
+  if (!bookedDiscount && !isGst && !deliveryFee) {
+    bookedDiscount = Math.max(0, subtotal - (Number(advance.total_amount) || 0));
+  }
+  const extraDiscount = Math.max(0, extraDiscountOnBalance) / (1 + gstPercentage / 100);
+  return {
+    subtotal,
+    isGst,
+    gstPercentage,
+    deliveryFee,
+    discountType: advance.discount_type === 'PERCENT' ? ('PERCENT' as const) : ('FIXED' as const),
+    discountValue: Number(advance.discount_value) || 0,
+    extraDiscount,
+    discountAmount: Math.round((bookedDiscount + extraDiscount) * 100) / 100,
+  };
 }
 
 export const dbStore = {
@@ -479,6 +533,7 @@ export const dbStore = {
   // ADVANCE ORDERS — partial-payment holds. Revenue is recognized only when the
   // balance is collected and finalizeAdvanceOrder turns the hold into an invoice.
   async listAdvanceOrders(): Promise<AdvanceOrderWithRelations[]> {
+    await ensureAdvanceSchema();
     const rows = await sql`
       SELECT a.*, c.name AS customer_name, c.phone AS customer_phone, c.address AS customer_address
       FROM advance_orders a
@@ -499,6 +554,7 @@ export const dbStore = {
   },
 
   async getAdvanceOrder(id: string): Promise<AdvanceOrderWithRelations | null> {
+    await ensureAdvanceSchema();
     const rows = await sql`
       SELECT a.*, c.name AS customer_name, c.phone AS customer_phone, c.address AS customer_address
       FROM advance_orders a
@@ -524,6 +580,13 @@ export const dbStore = {
     totalAmount: number;
     depositAmount: number;
     depositPaymentMode: PaymentMode;
+    discountType?: 'PERCENT' | 'FIXED';
+    discountValue?: number;
+    discountAmount?: number;
+    isGst?: boolean;
+    gstPercentage?: number;
+    gstAmount?: number;
+    deliveryFee?: number;
     deliveryDate: string | null;
     notes: string | null;
     items: {
@@ -540,14 +603,21 @@ export const dbStore = {
       payload.customerAddress,
     );
 
+    await ensureAdvanceSchema();
+    const isGst = Boolean(payload.isGst) && (payload.gstPercentage ?? 0) > 0;
     await sql`
       INSERT INTO advance_orders (
         id, customer_id, status, subtotal, total_amount, deposit_amount,
-        deposit_payment_mode, delivery_date, notes
+        deposit_payment_mode, delivery_date, notes,
+        discount_type, discount_value, discount_amount,
+        is_gst, gst_percentage, gst_amount, delivery_fee
       ) VALUES (
         ${payload.advanceOrderId}, ${customer.id}, 'PENDING',
         ${payload.subtotal}, ${payload.totalAmount}, ${payload.depositAmount},
-        ${payload.depositPaymentMode}, ${payload.deliveryDate}, ${payload.notes}
+        ${payload.depositPaymentMode}, ${payload.deliveryDate}, ${payload.notes},
+        ${payload.discountType ?? 'FIXED'}, ${payload.discountValue ?? 0}, ${payload.discountAmount ?? 0},
+        ${isGst}, ${isGst ? payload.gstPercentage : 0}, ${isGst ? payload.gstAmount ?? 0 : 0},
+        ${payload.deliveryFee ?? 0}
       )
     `;
 
@@ -619,14 +689,17 @@ export const dbStore = {
       qty: it.quantity,
     }));
 
-    // Grand total math mirrors POSBilling.completeSale (GST-exclusive subtotal).
-    const rawSubtotal = cart.reduce((acc, i) => acc + i.price * i.qty, 0);
-    const taxableValue = Math.max(0, rawSubtotal - payload.discountAmount);
-    const gstAmount =
-      payload.isGst && payload.gstPercentage > 0
-        ? taxableValue * (payload.gstPercentage / 100)
-        : 0;
-    const grandTotal = taxableValue + gstAmount + payload.deliveryFee;
+    // Carry the bill adjustments made when the advance was booked, then apply
+    // any extra discount given while collecting the balance.
+    const bill = advanceBill(advance, payload.discountAmount);
+    const isGst = bill.isGst || (payload.isGst && payload.gstPercentage > 0);
+    const gstPercentage = bill.isGst ? bill.gstPercentage : isGst ? payload.gstPercentage : 0;
+    const taxableValue = Math.max(0, bill.subtotal - bill.discountAmount);
+    const gstAmount = isGst ? taxableValue * (gstPercentage / 100) : 0;
+    const deliveryFee = bill.deliveryFee + payload.deliveryFee;
+    const grandTotal = taxableValue + gstAmount + deliveryFee;
+    // Show the booking's own % only when it is the whole discount.
+    const keepBookedType = bill.extraDiscount === 0 && bill.discountType === 'PERCENT';
 
     const { orderId } = await this.submitOrder({
       orderId: payload.invoiceId,
@@ -634,15 +707,15 @@ export const dbStore = {
       customerPhone: advance.customer_phone,
       customerAddress: advance.customer_address,
       source: 'OFFLINE',
-      isGst: payload.isGst,
+      isGst,
       billDate: payload.billDate,
       items: cart,
-      discountType: payload.discountType,
-      discountValue: payload.discountValue,
-      discountAmount: payload.discountAmount,
-      gstPercentage: payload.isGst ? payload.gstPercentage : 0,
+      discountType: keepBookedType ? 'PERCENT' : 'FIXED',
+      discountValue: keepBookedType ? bill.discountValue : bill.discountAmount,
+      discountAmount: bill.discountAmount,
+      gstPercentage,
       gstAmount,
-      deliveryFee: payload.deliveryFee,
+      deliveryFee,
       grandTotal,
       cashReceived: grandTotal,
       paymentMode: payload.paymentMode,

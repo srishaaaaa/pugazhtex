@@ -107,6 +107,14 @@ export type AdvanceOrderRow = {
   total_amount: number;
   deposit_amount: number;
   deposit_payment_mode: PaymentMode;
+  // Bill adjustments recorded at booking and carried into the final invoice.
+  discount_type?: 'PERCENT' | 'FIXED';
+  discount_value?: number;
+  discount_amount?: number;
+  is_gst?: boolean;
+  gst_percentage?: number;
+  gst_amount?: number;
+  delivery_fee?: number;
   delivery_date: string | null;
   notes: string | null;
   finalized_order_id: string | null;
