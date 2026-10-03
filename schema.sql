@@ -101,7 +101,8 @@ CREATE TABLE IF NOT EXISTS order_items (
   snapshot_name  TEXT NOT NULL,
   snapshot_price NUMERIC NOT NULL DEFAULT 0,
   quantity       NUMERIC NOT NULL DEFAULT 1,
-  offer_pct      NUMERIC NOT NULL DEFAULT 0
+  offer_pct      NUMERIC NOT NULL DEFAULT 0,
+  original_price NUMERIC                      -- catalogue price before the offer
 );
 
 CREATE INDEX IF NOT EXISTS idx_order_items_order   ON order_items (order_id);
@@ -157,7 +158,9 @@ CREATE TABLE IF NOT EXISTS advance_order_items (
   snapshot_name    TEXT NOT NULL,
   snapshot_desc    TEXT,
   snapshot_price   NUMERIC NOT NULL DEFAULT 0,
-  quantity         NUMERIC NOT NULL DEFAULT 1
+  quantity         NUMERIC NOT NULL DEFAULT 1,
+  offer_pct        NUMERIC NOT NULL DEFAULT 0,
+  original_price   NUMERIC
 );
 
 CREATE INDEX IF NOT EXISTS idx_advance_items_order

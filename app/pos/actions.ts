@@ -162,6 +162,8 @@ export async function createAdvanceOrder(payload: {
     snapshot_desc: string | null;
     snapshot_price: number;
     quantity: number;
+    offer_pct?: number;
+    original_price?: number | null;
   }[];
 }): Promise<{ advanceOrderId: string }> {
   return await dbStore.createAdvanceOrder(payload);

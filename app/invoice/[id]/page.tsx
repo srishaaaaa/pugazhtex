@@ -1,4 +1,5 @@
 import { dbStore } from "@/lib/dbStore";
+import { lineOriginalPrice, offerPercent } from "@/lib/types";
 import { getShopSettings, shopLogoSrc, formatPhone } from "@/lib/shopSettings";
 import { ArrowLeft, FileText } from "lucide-react";
 import Link from "next/link";
@@ -153,6 +154,24 @@ export default async function InvoicePage({
     Math.abs(subtotalNum - discountNum + deliveryFeeNum - grandTotalNum) < 0.01;
   const taxableValueNum = Math.max(0, subtotalNum - discountNum);
 
+  // Offer products: original catalogue price vs the offer price billed.
+  const offerLines = order.items.map((item) => {
+    const price = Number(item.snapshot_price) || 0;
+    const original = lineOriginalPrice(item);
+    const onOffer = original > price;
+    return {
+      onOffer,
+      original,
+      price,
+      pct: onOffer ? offerPercent(original, price) : 0,
+      saveEach: onOffer ? original - price : 0,
+      saveTotal: onOffer ? (original - price) * Number(item.quantity) : 0,
+    };
+  });
+  const offerSavingsNum = offerLines.reduce((acc, l) => acc + l.saveTotal, 0);
+  const inr = (n: number) =>
+    n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
   const halfGstRate = order.gst_percentage ? order.gst_percentage / 2 : 9;
   const halfGstAmount = gstAmountNum > 0 ? gstAmountNum / 2 : 0;
 
@@ -264,9 +283,12 @@ export default async function InvoicePage({
                   <tr key={i} className="border-b border-dashed border-black/15">
                     <td className="py-1.5 pr-1">
                       <div className="font-semibold">{item.snapshot_name}</div>
-                      {Number(item.offer_pct) > 0 && (
-                        <div className="text-[9px] text-[#15803D] font-semibold">
-                          Offer −{Number(item.offer_pct)}%
+                      {offerLines[i].onOffer && (
+                        <div className="text-[9px] font-semibold leading-tight">
+                          <div>
+                            OFFER: <span className="line-through">₹{inr(offerLines[i].original)}</span> → ₹{inr(offerLines[i].price)} (−{offerLines[i].pct}%)
+                          </div>
+                          <div>You save ₹{inr(offerLines[i].saveTotal)}</div>
                         </div>
                       )}
                     </td>
@@ -310,6 +332,11 @@ export default async function InvoicePage({
               <span>TOTAL:</span>
               <span>₹{grandTotalNum.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
             </div>
+            {offerSavingsNum > 0 && (
+              <div className="text-center text-[10px] font-bold pt-1">
+                ** You saved ₹{inr(offerSavingsNum)} on offers **
+              </div>
+            )}
           </div>
           <div className="text-[10px] space-y-1 mb-3">
             <p className="font-semibold text-center border-b border-dashed border-black/20 pb-2 mb-2">{paymentLabel}</p>
@@ -446,9 +473,12 @@ export default async function InvoicePage({
                       <div className="font-medium text-zinc-900">
                         {item.snapshot_name}
                       </div>
-                      {Number(item.offer_pct) > 0 && (
-                        <div className="text-[10px] text-[#15803D] font-semibold">
-                          Offer −{Number(item.offer_pct)}%
+                      {offerLines[index].onOffer && (
+                        <div className="mt-1 inline-block rounded border border-[#15803D]/30 bg-[#15803D]/5 px-1.5 py-0.5 text-[10px] leading-snug text-[#15803D]">
+                          <span className="font-bold uppercase tracking-wide">Offer product</span>
+                          {" · "}Original ₹{inr(offerLines[index].original)}
+                          {" · "}Offer −{offerLines[index].pct}% (save ₹{inr(offerLines[index].saveEach)} each)
+                          {" · "}Offer price ₹{inr(offerLines[index].price)}
                         </div>
                       )}
                     </td>
@@ -461,6 +491,11 @@ export default async function InvoicePage({
                       {item.quantity}
                     </td>
                     <td className="py-3 text-right font-mono text-zinc-600">
+                      {offerLines[index].onOffer && (
+                        <div className="text-[10px] text-zinc-400 line-through">
+                          {inr(offerLines[index].original)}
+                        </div>
+                      )}
                       {unitPrice.toLocaleString("en-IN", {
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2,
@@ -618,6 +653,12 @@ export default async function InvoicePage({
                 ₹{grandTotalNum.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
             </div>
+            {offerSavingsNum > 0 && (
+              <div className="flex justify-between rounded bg-[#15803D]/5 border border-[#15803D]/25 px-2 py-1.5 text-[11px] font-semibold text-[#15803D]">
+                <span>You saved on offer products</span>
+                <span className="font-mono">₹{inr(offerSavingsNum)}</span>
+              </div>
+            )}
           </div>
         </div>
 

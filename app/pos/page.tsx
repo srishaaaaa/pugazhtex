@@ -83,7 +83,7 @@ import {
   setAdvanceOrderStatus,
   fetchShopSettings,
 } from "@/app/pos/actions";
-import { Product, Expense, Category, AdvanceOrderWithRelations, AdvanceOrderStatus, ShopSettings, ItemType, effectivePrice } from "@/lib/types";
+import { Product, Expense, Category, AdvanceOrderWithRelations, AdvanceOrderStatus, ShopSettings, ItemType, effectivePrice, offerOriginalPrice, offerPercent } from "@/lib/types";
 import { DEFAULT_SHOP_SETTINGS } from "@/lib/shopProfile";
 import SettingsPanel from "./SettingsPanel";
 import LowStockAlarm, { type LowStockItem } from "./LowStockAlarm";
@@ -177,6 +177,7 @@ type OrderItem = {
   qty: number;
   product_id?: string | null;
   offerPct?: number; // automatic catalogue offer applied to this line
+  originalPrice?: number; // catalogue price before the offer (0 = no offer)
 };
 
 type CompletedOrder = {
@@ -252,6 +253,7 @@ const SearchableItemInput = ({
     const onOffer = (catItem.offerPct ?? 0) > 0 && (catItem.offerPrice ?? 0) > 0;
     updateItem(item.id, "price", onOffer ? (catItem.offerPrice as number) : (catItem.price ?? 0));
     updateItem(item.id, "offerPct", onOffer ? (catItem.offerPct as number) : 0);
+    updateItem(item.id, "originalPrice", onOffer ? (catItem.price ?? 0) : 0);
     setIsOpen(false);
     setTimeout(() => {
       const priceInput = document.getElementById(`price-${item.id}`);
@@ -1140,14 +1142,23 @@ export default function POSBilling() {
       return;
     }
 
-    // An offer is only meaningful with a positive % and a resulting price.
-    const offerPct = Number(newCatOfferPct) || 0;
+    // An offer needs a % or a fixed offer price below the original price;
+    // whichever is missing is derived from the other.
+    const typedOfferPrice = newCatOfferPrice === "" ? 0 : Number(newCatOfferPrice);
+    let offerPct = Number(newCatOfferPct) || 0;
+    if (offerPct <= 0 && typedOfferPrice > 0 && priceNum > 0 && typedOfferPrice < priceNum) {
+      offerPct = Math.round((1 - typedOfferPrice / priceNum) * 10000) / 100;
+    }
     const offerPrice =
       offerPct > 0
-        ? newCatOfferPrice === ""
-          ? Math.round((priceNum - (priceNum * offerPct) / 100) * 100) / 100
-          : Number(newCatOfferPrice)
+        ? typedOfferPrice > 0
+          ? typedOfferPrice
+          : Math.round((priceNum - (priceNum * offerPct) / 100) * 100) / 100
         : null;
+    if (offerPrice !== null && offerPrice >= priceNum) {
+      alert("The offer price must be lower than the original price.");
+      return;
+    }
 
     const isService = newCatType === "SERVICE";
 
@@ -1207,6 +1218,7 @@ export default function POSBilling() {
         updateItem(catalogTargetRowId, "name", data.name);
         updateItem(catalogTargetRowId, "price", effectivePrice(data));
         updateItem(catalogTargetRowId, "offerPct", Number(data.offer_discount_pct) || 0);
+        updateItem(catalogTargetRowId, "originalPrice", offerOriginalPrice(data));
         setCatalogTargetRowId(null);
       }
 
@@ -1228,6 +1240,7 @@ export default function POSBilling() {
           "offerPct",
           Number(product.offer_discount_pct) || 0,
         );
+        updateItem(catalogTargetRowId, "originalPrice", offerOriginalPrice(product));
         setCatalogTargetRowId(null);
       }
 
@@ -1371,6 +1384,8 @@ export default function POSBilling() {
           snapshot_desc: i.desc || null,
           snapshot_price: i.price,
           quantity: i.qty,
+          offer_pct: i.offerPct ?? 0,
+          original_price: (i.originalPrice ?? 0) > i.price ? i.originalPrice : null,
         })),
       });
 
@@ -1664,6 +1679,7 @@ export default function POSBilling() {
           price: i.price,
           qty: i.qty,
           offerPct: i.offerPct ?? 0,
+          originalPrice: (i.originalPrice ?? 0) > i.price ? i.originalPrice : undefined,
         })),
         discountType: discountType === "percent" ? "PERCENT" : "FIXED",
         discountValue: discountValue,
@@ -4237,7 +4253,14 @@ export default function POSBilling() {
                               {/* Automatic offer applied to this line */}
                               {(item.offerPct ?? 0) > 0 && (
                                 <span className="absolute -top-1 right-0 sm:right-[calc(100%+0.5rem)] text-[9px] font-black uppercase tracking-widest text-[#15803D] bg-[#15803D]/10 border border-[#15803D]/30 px-1.5 py-0.5 rounded">
-                                  Offer −{item.offerPct}% applied
+                                  {(item.originalPrice ?? 0) > item.price ? (
+                                    <>
+                                      Offer: <span className="line-through opacity-70">₹{(item.originalPrice ?? 0).toLocaleString("en-IN")}</span>{" "}
+                                      → ₹{item.price.toLocaleString("en-IN")} (−{offerPercent(item.originalPrice ?? 0, item.price)}%)
+                                    </>
+                                  ) : (
+                                    <>Offer −{item.offerPct}% applied</>
+                                  )}
                                 </span>
                               )}
 
@@ -4339,6 +4362,11 @@ export default function POSBilling() {
                                                     onOffer
                                                       ? (catItem.offerPct as number)
                                                       : 0,
+                                                  );
+                                                  updateItem(
+                                                    item.id,
+                                                    "originalPrice",
+                                                    onOffer ? (catItem.price ?? 0) : 0,
                                                   );
                                                   setActiveCatalogRowId(null);
                                                 }}

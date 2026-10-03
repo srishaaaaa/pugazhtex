@@ -37,6 +37,37 @@ export const effectivePrice = (p: {
   return p.selling_price;
 };
 
+/** Catalogue price an offer was taken from, or 0 when the product has no offer. */
+export const offerOriginalPrice = (p: {
+  selling_price: number;
+  offer_discount_pct: number;
+  offer_price: number | null;
+}): number => {
+  const original = Number(p.selling_price) || 0;
+  return effectivePrice(p) < original ? original : 0;
+};
+
+/** Whole-number % saved going from `original` to `price` (e.g. 1000 -> 850 = 15). */
+export const offerPercent = (original: number, price: number): number =>
+  original > 0 ? Math.round(((original - price) / original) * 1000) / 10 : 0;
+
+/**
+ * Original (pre-offer) unit price of a saved bill line. Lines saved before the
+ * original price was stored fall back to deriving it from the offer %.
+ */
+export const lineOriginalPrice = (item: {
+  snapshot_price: number;
+  offer_pct?: number;
+  original_price?: number | null;
+}): number => {
+  const price = Number(item.snapshot_price) || 0;
+  const stored = Number(item.original_price) || 0;
+  if (stored > price) return stored;
+  const pct = Number(item.offer_pct) || 0;
+  if (pct > 0 && pct < 100) return Math.round((price / (1 - pct / 100)) * 100) / 100;
+  return 0;
+};
+
 export type Customer = {
   id: string;
   name: string;
@@ -77,6 +108,7 @@ export type OrderItemRow = {
   snapshot_price: number;
   quantity: number;
   offer_pct: number; // automatic offer applied to this line (0 = none)
+  original_price?: number | null; // catalogue price before the offer
 };
 
 export type OrderWithRelations = OrderRow & {
@@ -131,6 +163,8 @@ export type AdvanceOrderItemRow = {
   snapshot_desc: string | null;
   snapshot_price: number;
   quantity: number;
+  offer_pct?: number;
+  original_price?: number | null;
 };
 
 export type AdvanceOrderWithRelations = AdvanceOrderRow & {
@@ -148,6 +182,7 @@ export type CartItem = {
   price: number;
   qty: number;
   offerPct?: number; // automatic catalogue offer applied to this line
+  originalPrice?: number; // catalogue price before the offer
 };
 
 /**

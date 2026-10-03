@@ -32,6 +32,8 @@ async function ensureAdvanceSchema(): Promise<void> {
     await sql`ALTER TABLE advance_orders ADD COLUMN IF NOT EXISTS gst_percentage NUMERIC NOT NULL DEFAULT 0`;
     await sql`ALTER TABLE advance_orders ADD COLUMN IF NOT EXISTS gst_amount NUMERIC NOT NULL DEFAULT 0`;
     await sql`ALTER TABLE advance_orders ADD COLUMN IF NOT EXISTS delivery_fee NUMERIC NOT NULL DEFAULT 0`;
+    await sql`ALTER TABLE advance_order_items ADD COLUMN IF NOT EXISTS offer_pct NUMERIC NOT NULL DEFAULT 0`;
+    await sql`ALTER TABLE advance_order_items ADD COLUMN IF NOT EXISTS original_price NUMERIC`;
     advanceSchemaChecked = true;
   } catch (err) {
     console.error('Failed to ensure advance order schema:', err);
@@ -205,6 +207,7 @@ export const dbStore = {
       // The offer percentage is snapshotted per invoice line so the printed
       // invoice can show the discount that was actually applied.
       await sql`ALTER TABLE order_items ADD COLUMN IF NOT EXISTS offer_pct NUMERIC NOT NULL DEFAULT 0`;
+      await sql`ALTER TABLE order_items ADD COLUMN IF NOT EXISTS original_price NUMERIC`;
       productSchemaChecked = true;
     } catch (err) {
       console.error('Failed to ensure product schema:', err);
@@ -481,6 +484,8 @@ export const dbStore = {
       snapshot_price: item.price,
       quantity: item.qty,
       offer_pct: item.offerPct ?? 0,
+      original_price:
+        (item.originalPrice ?? 0) > item.price ? (item.originalPrice as number) : null,
     }));
 
     // Subtotal is GST-exclusive (sum of line prices × qty).
@@ -510,10 +515,12 @@ export const dbStore = {
       finalOrderItems.map((oi) =>
         sql`
           INSERT INTO order_items (
-            id, order_id, product_id, snapshot_name, snapshot_price, quantity, offer_pct
+            id, order_id, product_id, snapshot_name, snapshot_price, quantity, offer_pct,
+            original_price
           ) VALUES (
             ${uid()}, ${oi.order_id}, ${oi.product_id},
-            ${oi.snapshot_name}, ${oi.snapshot_price}, ${oi.quantity}, ${oi.offer_pct}
+            ${oi.snapshot_name}, ${oi.snapshot_price}, ${oi.quantity}, ${oi.offer_pct},
+            ${oi.original_price ?? null}
           )
         `
       ),
@@ -595,6 +602,8 @@ export const dbStore = {
       snapshot_desc: string | null;
       snapshot_price: number;
       quantity: number;
+      offer_pct?: number;
+      original_price?: number | null;
     }[];
   }): Promise<{ advanceOrderId: string }> {
     const customer = await this.upsertCustomer(
@@ -631,11 +640,14 @@ export const dbStore = {
       payload.items.map((it) =>
         sql`
           INSERT INTO advance_order_items (
-            id, advance_order_id, product_id, snapshot_name, snapshot_desc, snapshot_price, quantity
+            id, advance_order_id, product_id, snapshot_name, snapshot_desc, snapshot_price, quantity,
+            offer_pct, original_price
           ) VALUES (
             ${uid()}, ${payload.advanceOrderId},
             ${it.product_id && liveProductIds.has(it.product_id) ? it.product_id : null},
-            ${it.snapshot_name}, ${it.snapshot_desc}, ${it.snapshot_price}, ${it.quantity}
+            ${it.snapshot_name}, ${it.snapshot_desc}, ${it.snapshot_price}, ${it.quantity},
+            ${it.offer_pct ?? 0},
+            ${(it.original_price ?? 0) > it.snapshot_price ? it.original_price : null}
           )
         `,
       ),
@@ -687,6 +699,8 @@ export const dbStore = {
       desc: it.snapshot_desc || '',
       price: Number(it.snapshot_price),
       qty: it.quantity,
+      offerPct: Number(it.offer_pct) || 0,
+      originalPrice: Number(it.original_price) || undefined,
     }));
 
     // Carry the bill adjustments made when the advance was booked, then apply
