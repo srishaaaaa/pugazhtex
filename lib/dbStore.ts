@@ -668,6 +668,22 @@ export const dbStore = {
     `;
   },
 
+  /** The advance order (if any) whose balance collection produced this invoice. */
+  async getAdvanceForInvoice(orderId: string): Promise<{
+    id: string;
+    deposit_amount: number;
+    deposit_payment_mode: PaymentMode;
+    created_at: string;
+  } | null> {
+    const rows = await sql`
+      SELECT id, deposit_amount, deposit_payment_mode, created_at
+      FROM advance_orders WHERE finalized_order_id = ${orderId} LIMIT 1
+    `;
+    return rows.length > 0
+      ? (rows[0] as { id: string; deposit_amount: number; deposit_payment_mode: PaymentMode; created_at: string })
+      : null;
+  },
+
   async deleteAdvanceOrder(id: string): Promise<void> {
     await sql`DELETE FROM advance_orders WHERE id = ${id}`;
   },

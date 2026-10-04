@@ -15,6 +15,8 @@ export default async function AdvanceReceiptPage({
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const isEmbed = resolvedSearchParams.embed === "true";
   const autoPrint = resolvedSearchParams.print === "true";
+  const paper = resolvedSearchParams.paper === "thermal" ? "thermal" : "a4";
+  const size = typeof resolvedSearchParams.size === "string" ? resolvedSearchParams.size : "a4";
 
   const advance = await dbStore.getAdvanceOrder(id);
   const shop = await getShopSettings();
@@ -83,7 +85,18 @@ export default async function AdvanceReceiptPage({
     >
       <style>{`
         @media print {
-          @page { size: A4 portrait; margin: 12mm 10mm; }
+          @page {
+            size: ${
+              paper === "thermal"
+                ? size === "58"
+                  ? "58mm auto"
+                  : "80mm auto"
+                : size === "a5"
+                  ? "A5 portrait"
+                  : "A4 portrait"
+            };
+            margin: ${paper === "thermal" ? "3mm" : size === "a5" ? "10mm" : "12mm 10mm"};
+          }
           html, body {
             background: #ffffff !important;
             color: #000000 !important;
@@ -118,6 +131,111 @@ export default async function AdvanceReceiptPage({
         </div>
       )}
 
+      {paper === "thermal" ? (
+        <div className={`invoice-sheet bg-white mx-auto text-black font-mono leading-tight p-3 ${size === "58" ? "w-[260px]" : "w-[320px]"}`}>
+          <div className="text-center pb-3 border-b border-dashed border-black/40 mb-3">
+            <h1 className="text-xl font-bold tracking-tight">{shop.shop_name}</h1>
+            {shop.address && <p className="text-[11px] mt-1">{shop.address}</p>}
+            {shopPhone && <p className="text-[11px]">Ph: {shopPhone}</p>}
+          </div>
+          <div className="text-[11px] pb-3 border-b border-dashed border-black/40 mb-3 space-y-1">
+            <div className="flex justify-between">
+              <span className="font-bold">ADVANCE RECEIPT</span>
+              <span>#{advance.id}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Date:</span>
+              <span>{formattedDate}</span>
+            </div>
+            {deliveryDate && (
+              <div className="flex justify-between">
+                <span>Delivery:</span>
+                <span>{deliveryDate}</span>
+              </div>
+            )}
+            <div className="flex justify-between">
+              <span>Customer:</span>
+              <span className="font-semibold text-right">{advance.customer_name || "Guest"}</span>
+            </div>
+            {advance.customer_phone && (
+              <div className="flex justify-between">
+                <span>Phone:</span>
+                <span>{advance.customer_phone}</span>
+              </div>
+            )}
+          </div>
+          <div className="text-[11px] w-full">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-dashed border-black/40">
+                  <th className="py-1 font-bold">Item</th>
+                  <th className="py-1 font-bold text-center">Qty</th>
+                  <th className="py-1 font-bold text-right">Amt</th>
+                </tr>
+              </thead>
+              <tbody className="align-top">
+                {advance.items.map((item, i) => (
+                  <tr key={i} className="border-b border-dashed border-black/15">
+                    <td className="py-1.5 pr-1 font-semibold">{item.snapshot_name}</td>
+                    <td className="py-1.5 text-center">{item.quantity}</td>
+                    <td className="py-1.5 text-right font-medium">
+                      {fmt(Number(item.quantity) * Number(item.snapshot_price))}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="text-[11px] py-3 border-b border-dashed border-black/40 mb-3 space-y-1.5">
+            {(bill.discountAmount > 0 || bookedGst > 0 || bill.deliveryFee > 0) && (
+              <div className="flex justify-between">
+                <span>Subtotal:</span>
+                <span>{fmt(bill.subtotal)}</span>
+              </div>
+            )}
+            {bill.discountAmount > 0 && (
+              <div className="flex justify-between">
+                <span>Discount:</span>
+                <span>-{fmt(bill.discountAmount)}</span>
+              </div>
+            )}
+            {bookedGst > 0 && (
+              <div className="flex justify-between">
+                <span>GST ({bill.gstPercentage}%):</span>
+                <span>{fmt(bookedGst)}</span>
+              </div>
+            )}
+            {bill.deliveryFee > 0 && (
+              <div className="flex justify-between">
+                <span>Delivery:</span>
+                <span>{fmt(bill.deliveryFee)}</span>
+              </div>
+            )}
+            <div className="flex justify-between font-bold">
+              <span>Order Total:</span>
+              <span>₹{fmt(totalNum)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Deposit Paid ({depositLabel}):</span>
+              <span>-₹{fmt(depositNum)}</span>
+            </div>
+            <div className="flex justify-between text-[14px] font-black mt-2 pt-1 border-t border-dashed border-black/40">
+              <span>BALANCE DUE:</span>
+              <span>₹{fmt(balanceNum)}</span>
+            </div>
+          </div>
+          {advance.notes && (
+            <p className="text-[10px] mb-3">Notes: {advance.notes}</p>
+          )}
+          <div className="text-[10px] text-center space-y-0.5">
+            <p>This is an advance receipt, not a final invoice.</p>
+            <p>Balance payable on or before delivery.</p>
+          </div>
+          <div className="text-[11px] text-center pt-2 font-semibold italic">
+            Thank you for your order!
+          </div>
+        </div>
+      ) : (
       <div className="invoice-sheet w-full max-w-[760px] bg-white border border-zinc-200/80 shadow-xs rounded-sm p-6 sm:p-12 text-zinc-900 print:border-none print:shadow-none print:p-0 print:rounded-none">
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start gap-6 pb-6 border-b-2 border-[var(--accent)]">
@@ -317,6 +435,7 @@ export default async function AdvanceReceiptPage({
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 }

@@ -102,6 +102,7 @@ export default async function InvoicePage({
   const size = resolvedSearchParams.size || "a4";
 
   const order = await dbStore.getOrderWithRelations(id);
+  const settledAdvance = order ? await dbStore.getAdvanceForInvoice(order.id) : null;
   const shop = await getShopSettings();
   const shopLogo = shopLogoSrc(shop);
   const shopPhone = formatPhone(shop.phone);
@@ -171,6 +172,19 @@ export default async function InvoicePage({
   const offerSavingsNum = offerLines.reduce((acc, l) => acc + l.saveTotal, 0);
   const inr = (n: number) =>
     n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  // Invoice that settled an advance order: deposit taken at booking + balance now.
+  const advanceDepositNum = settledAdvance ? Number(settledAdvance.deposit_amount) || 0 : 0;
+  const advanceBalanceNum = Math.max(0, grandTotalNum - advanceDepositNum);
+  const modeLabel = (m: string) => (m === "GPAY" ? "GPay" : m === "SPLIT" ? "Split" : "Cash");
+  const advanceBookedOn = settledAdvance
+    ? new Date(settledAdvance.created_at).toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        timeZone: "Asia/Kolkata",
+      })
+    : "";
 
   const halfGstRate = order.gst_percentage ? order.gst_percentage / 2 : 9;
   const halfGstAmount = gstAmountNum > 0 ? gstAmountNum / 2 : 0;
@@ -339,7 +353,21 @@ export default async function InvoicePage({
             )}
           </div>
           <div className="text-[10px] space-y-1 mb-3">
-            <p className="font-semibold text-center border-b border-dashed border-black/20 pb-2 mb-2">{paymentLabel}</p>
+            {settledAdvance ? (
+              <div className="border-b border-dashed border-black/20 pb-2 mb-2 space-y-0.5">
+                <p className="font-semibold text-center">Advance Order #{settledAdvance.id}</p>
+                <div className="flex justify-between">
+                  <span>Advance Paid ({modeLabel(settledAdvance.deposit_payment_mode)}):</span>
+                  <span>₹{inr(advanceDepositNum)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Balance Paid ({modeLabel(order.payment_mode)}):</span>
+                  <span>₹{inr(advanceBalanceNum)}</span>
+                </div>
+              </div>
+            ) : (
+              <p className="font-semibold text-center border-b border-dashed border-black/20 pb-2 mb-2">{paymentLabel}</p>
+            )}
             <p className="text-[9px] uppercase tracking-wider text-center text-gray-700">{numberToWords(grandTotalNum)}</p>
           </div>
           <div className="text-[11px] text-center pt-2 font-semibold italic">
@@ -528,7 +556,28 @@ export default async function InvoicePage({
             </div>
 
             {/* Payment details */}
-            {(cashReceivedNum > 0 || order.payment_mode === "SPLIT") && (
+            {settledAdvance ? (
+              <div className="text-xs text-zinc-600 space-y-0.5 pt-1">
+                <div>
+                  <span className="text-zinc-400">Advance Order: </span>
+                  <span className="font-mono font-medium text-zinc-800">#{settledAdvance.id}</span>
+                </div>
+                <div>
+                  <span className="text-zinc-400">
+                    Advance Paid ({modeLabel(settledAdvance.deposit_payment_mode)}, {advanceBookedOn}):{" "}
+                  </span>
+                  <span className="font-mono font-medium text-zinc-800">
+                    ₹{inr(advanceDepositNum)}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-zinc-400">Balance Paid ({modeLabel(order.payment_mode)}): </span>
+                  <span className="font-mono font-medium text-zinc-800">
+                    ₹{inr(advanceBalanceNum)}
+                  </span>
+                </div>
+              </div>
+            ) : (cashReceivedNum > 0 || order.payment_mode === "SPLIT") && (
               <div className="text-xs text-zinc-600 space-y-0.5 pt-1">
                 {order.payment_mode === "SPLIT" ? (
                   <>
@@ -575,7 +624,6 @@ export default async function InvoicePage({
             {/* Simple Terms */}
             <div className="text-[11px] text-zinc-500 leading-relaxed pt-2">
               <p className="font-medium text-zinc-700 mb-0.5">Terms & Notes:</p>
-              <p>• Goods once sold can only be exchanged within 7 days with this invoice.</p>
               <p>• Custom-stitched and altered garments are made to order and are non-returnable.</p>
             </div>
           </div>

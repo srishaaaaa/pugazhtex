@@ -450,6 +450,8 @@ export default function POSBilling() {
   const [applyGST, setApplyGST] = useState<boolean>(false);
   const [gstPercentage, setGstPercentage] = useState<number>(18);
   const [activeInvoiceId, setActiveInvoiceId] = useState<string | null>(null);
+  // Advance receipt shown in the same preview modal as invoices.
+  const [activeAdvancePreviewId, setActiveAdvancePreviewId] = useState<string | null>(null);
   const [completedBillData, setCompletedBillData] =
     useState<CompletedOrder | null>(null);
   const [isSubmittingOrder, setIsSubmittingOrder] = useState<boolean>(false);
@@ -2986,7 +2988,12 @@ export default function POSBilling() {
                   <input
                     type="number"
                     min={0}
-                    value={stockAdjustQty}
+                    // Show 0 as an empty box so typed digits replace it instead
+                    // of being appended after a leading zero.
+                    value={stockAdjustQty || ""}
+                    placeholder="0"
+                    onFocus={(e) => e.currentTarget.select()}
+                    onWheel={(e) => e.currentTarget.blur()}
                     onChange={(e) =>
                       setStockAdjustQty(Math.max(0, Number(e.target.value) || 0))
                     }
@@ -5420,9 +5427,9 @@ export default function POSBilling() {
                           if (a.status === "COMPLETED" && a.finalized_order_id) {
                             setActiveInvoiceId(a.finalized_order_id);
                           } else {
-                            printAdvanceReceipt(a.id);
+                            setActiveAdvancePreviewId(a.id);
                           }
-                        }} title={a.status === "COMPLETED" ? "Open Final Invoice" : "Print Advance Receipt"} className="flex items-center justify-center w-8 h-8 bg-[var(--accent)]/10 hover:bg-[var(--accent)]/20 text-[var(--accent)] rounded-md transition-colors cursor-pointer shrink-0">
+                        }} title={a.status === "COMPLETED" && a.finalized_order_id ? "Open Final Invoice" : "Preview Advance Receipt"} className="flex items-center justify-center w-8 h-8 bg-[var(--accent)]/10 hover:bg-[var(--accent)]/20 text-[var(--accent)] rounded-md transition-colors cursor-pointer shrink-0">
                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                           </svg>
@@ -8084,18 +8091,26 @@ export default function POSBilling() {
           </div>
         )}
 
-        {/* Invoice Modal */}
-        {activeInvoiceId && (
+        {/* Invoice / advance receipt preview modal */}
+        {(activeInvoiceId || activeAdvancePreviewId) && (() => {
+          const isAdvancePreview = !activeInvoiceId;
+          const previewId = (activeInvoiceId || activeAdvancePreviewId) as string;
+          const previewPath = `/${isAdvancePreview ? "advance" : "invoice"}/${previewId}`;
+          const closePreview = () => {
+            setActiveInvoiceId(null);
+            setActiveAdvancePreviewId(null);
+          };
+          return (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-[400] flex items-center justify-center p-2 sm:p-4 animate-in fade-in duration-150">
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl h-[92vh] sm:h-[88vh] flex flex-col overflow-hidden border border-neutral-300 transform scale-100 animate-in zoom-in-95 duration-150">
               <div className="px-4 py-2.5 flex justify-between items-center bg-neutral-900 text-white border-b border-neutral-800 shrink-0">
                 <h3 className="font-bold text-xs uppercase tracking-wider flex items-center gap-2 text-white">
                   <Printer className="w-3.5 h-3.5 text-neutral-300" />
-                  <span>Invoice Preview • #{activeInvoiceId}</span>
+                  <span>{isAdvancePreview ? "Advance Receipt Preview" : "Invoice Preview"} • #{previewId}</span>
                 </h3>
                 <div className="flex items-center gap-2">
                   <a
-                    href={`/invoice/${activeInvoiceId}`}
+                    href={previewPath}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-[11px] font-semibold text-neutral-300 hover:text-white px-2.5 py-1 bg-white/10 hover:bg-white/20 rounded transition-colors"
@@ -8103,7 +8118,7 @@ export default function POSBilling() {
                     Open Full Page ↗
                   </a>
                   <button
-                    onClick={() => setActiveInvoiceId(null)}
+                    onClick={closePreview}
                     className="w-7 h-7 flex items-center justify-center bg-white/10 hover:bg-white/20 text-white rounded transition-colors cursor-pointer"
                   >
                     <X className="w-4 h-4" />
@@ -8112,14 +8127,15 @@ export default function POSBilling() {
               </div>
               <div className="flex-1 w-full bg-neutral-100 overflow-hidden relative">
                 <iframe
-                  src={`/invoice/${activeInvoiceId}?embed=true`}
+                  src={`${previewPath}?embed=true`}
                   className="w-full h-full border-none absolute inset-0"
-                  title={`Invoice ${activeInvoiceId}`}
+                  title={`${isAdvancePreview ? "Advance receipt" : "Invoice"} ${previewId}`}
                 />
               </div>
             </div>
           </div>
-        )}
+          );
+        })()}
 
         {/* Print Settings Modal */}
         {printModalData && (
